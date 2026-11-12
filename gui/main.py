@@ -562,12 +562,16 @@ def window_header(page: ft.Page) -> ft.Control:
 
 def run() -> None:
     assets = os.path.join(ROOT, "gui", "assets")
+    target = main
+    if os.environ.get("POKELDN_PORTABLE") == "1":
+        from gui.portable import main as portable_main
+        target = portable_main
     drop.use_client()
     if os.environ.get("POKELDN_GUI_WEB"):   # a browser preview, for screenshots
-        ft.run(main, assets_dir=assets, view=ft.AppView.WEB_BROWSER, no_cdn=True,
+        ft.run(target, assets_dir=assets, view=ft.AppView.WEB_BROWSER, no_cdn=True,
                port=int(os.environ["POKELDN_GUI_WEB"]))
     else:
-        ft.run(main, assets_dir=assets)
+        ft.run(target, assets_dir=assets)
 
 
 if __name__ == "__main__":

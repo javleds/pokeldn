@@ -66,3 +66,31 @@ Las pruebas estructurales de layout no prueban ergonomía. Añadir pruebas de co
 ## Registro mínimo de mediciones futuras
 
 Registrar revisión del código, modelo/RAM de Pi, OS, versiones, firmware C6, pantalla/escalado, operación y tamaño de datos, duración y método. Medir memoria del conjunto de procesos, errores y latencia; consumo físico cuando se elija batería. Diferenciar medición real de simulación y estimación.
+
+## Primer incremento portátil (2026-11-12)
+
+Implementados en `gui/portable.py` y `gui/portable_setup.py`: diagnóstico, importación y validación de claves, comprobación de C6, instalación explícita con el CLI existente, progreso, logs acotados/redactados y confirmación. El arranque de escritorio no cambia. Los mockups aprobados están en [referencias](../specs/references/README.md).
+
+Desde la raíz del fork, con el entorno virtual activo:
+
+```sh
+POKELDN_PORTABLE=1 python gui/main.py
+```
+
+Previsualización local (el archivo elegido en el navegador se envía a este servidor):
+
+```sh
+POKELDN_PORTABLE=1 POKELDN_GUI_WEB=8551 FLET_SERVER_IP=127.0.0.1 FLET_FORCE_WEB_SERVER=true python gui/main.py
+```
+
+Añadir `POKELDN_PORTABLE_DEMO=1` para una demo explícita: la selección de claves y la instalación son simuladas, no hay IO de placa ni escritura de configuración del controlador. Este modo no debe usarse para validar hardware. En el despliegue normal omitir esa variable. No exponer la previsualización en una interfaz pública.
+
+En el Mac de desarrollo se instalaron Python 3.13.7 y .NET SDK 10.0.404 en `.tools/`, con dependencias en `.venv/`. Para usar ese SDK local:
+
+```sh
+export DOTNET_ROOT="$PWD/.tools/dotnet"
+export PATH="$DOTNET_ROOT:$PATH"
+source .venv/bin/activate
+```
+
+La versión base compiló PKHeX sin advertencias ni errores. Sus 488 pruebas seleccionadas pasaron (cinco requirieron repetición fuera de las restricciones de sockets). La nueva configuración se verifica con tests portátiles y suites GUI/firmware. No se ha flasheado ni certificado un C6 real con estas vistas, ni se ha probado Pi 5. El inicio portátil posterior es informativo: banco, generación e intercambios con diseño propio no están implementados aún.

@@ -45,7 +45,7 @@ Diseñar para el espacio real de 800 × 480: una tarea principal por vista cuand
 
 Comenzar con teclado como simulación de cruceta: flechas, Enter y Escape. Respetar edición de campos, selección en listas y foco de diálogos. El mapeo eléctrico y los botones físicos definitivos siguen abiertos.
 
-El mecanismo `POKELDN_PORTABLE=1` es una **propuesta del plan**, todavía no una variable implementada. Las dimensiones objetivo y el perfil separado son decisiones; la API concreta debe validarse durante el primer incremento.
+El mecanismo `POKELDN_PORTABLE=1` activa el asistente portátil implementado. `POKELDN_PORTABLE_DEMO=1` añade una demo visual explícita sin hardware. Ver [desarrollo](development.md) para comandos y límites del primer incremento.
 
 ## Incertidumbres que deben permanecer visibles
 
@@ -55,3 +55,5 @@ El mecanismo `POKELDN_PORTABLE=1` es una **propuesta del plan**, todavía no una
 - Resolver ergonomía del selector de archivos y teclado en pantalla si se necesita.
 - Desarrollo nativo en Mac y VM Linux ARM64 ayudan a probar UI/compatibilidad; no sustituyen validación de GPIO, pantalla, radio, potencia y rendimiento físico.
 - El uso local necesita dependencias y recursos preparados previamente; auditar descargas de assets y actualizaciones antes de prometer funcionamiento completamente desconectado.
+
+El arranque portátil entra directamente a la Pokédex cuando todas las comprobaciones están listas, también al abrir una nueva sesión web. La configuración permanece accesible desde el engranaje; si hay requisitos pendientes se muestra el diagnóstico, y una instalación en curso conserva su vista de progreso.

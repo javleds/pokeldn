@@ -16,7 +16,7 @@ Esta carpeta conserva los acuerdos del usuario para evitar redescubrir o desviar
 
 ## Estado al 2026-11-12
 
-Planeación y documentación iniciales. Todavía no se ha implementado el perfil portátil, preparado el entorno de ejecución ni medido la aplicación en Raspberry Pi. Se inspeccionaron la GUI, su integración con PKHeX, el runner, las instrucciones de instalación y el soporte documentado para C6.
+Primer incremento de configuración portátil implementado: diagnóstico, claves, placa, progreso y logs. Entorno Mac preparado y PKHeX compilado; UI inspeccionada a 800 × 480. La demo es explícita y no toca hardware. Aún no se ha validado en Raspberry Pi ni flasheado un C6 real con estas vistas. Banco, generación e intercambios con la nueva UI son la siguiente etapa. Véanse los comandos y límites en [desarrollo](development.md).
 
 El repositorio de trabajo es `javleds/pokeldn`, derivado de `Decryptu/pokeldn`. El Git vacío del directorio padre fue retirado por petición del usuario; el fork y sus archivos permanecen intactos. La asociación visual de la conversación con un proyecto de Codex no cambia la raíz Git.
 
