@@ -107,3 +107,45 @@ def test_new_session_selects_initial_screen(view, monkeypatch, busy, ready, expe
     monkeypatch.setattr(reopened, "focus", AsyncMock())
     asyncio.run(reopened.start())
     assert reopened.screen == expected
+
+
+def test_gallery_catalog_and_selection_survive_settings(view):
+    from gui.portable import PORTABLE_GAMES
+    assert [g.key for g in PORTABLE_GAMES] == ['frlg', 'lgpe', 'swsh', 'bdsp', 'pla', 'sv']
+    view.go('home')
+    assert view.game_list.horizontal
+    view.select_game(PORTABLE_GAMES[-1])
+    view.go('health')
+    view.go('home')
+    assert view.selected_game.key == 'sv'
+
+
+def test_gallery_missing_image_uses_pokeball(monkeypatch):
+    import flet as ft
+    from gui.portable import PORTABLE_GAMES, game_avatar
+    from pathlib import Path
+    monkeypatch.setattr(Path, 'is_file', lambda self: False)
+    assert game_avatar(PORTABLE_GAMES[0]).content.icon == ft.Icons.CATCHING_POKEMON
+
+
+def test_gallery_existing_image_has_error_fallback():
+    import flet as ft
+    from gui.portable import PORTABLE_GAMES, game_avatar
+    assert game_avatar(PORTABLE_GAMES[0]).content.error_content.icon == ft.Icons.CATCHING_POKEMON
+
+
+def test_gallery_navigation_keeps_focus_visible_and_reaches_settings(view, monkeypatch):
+    from gui.portable import PORTABLE_GAMES
+    view.go('home')
+    scroll = AsyncMock()
+    monkeypatch.setattr(view.game_list, 'scroll_to', scroll)
+    for button in view.buttons:
+        monkeypatch.setattr(button, 'focus', AsyncMock())
+    for _ in range(10):
+        asyncio.run(view.key(SimpleNamespace(key='Arrow Right')))
+    assert view.focus_index == len(PORTABLE_GAMES) - 1
+    scroll.assert_awaited_with(offset=352, duration=150)
+    asyncio.run(view.key(SimpleNamespace(key='Arrow Up')))
+    assert view.buttons[view.focus_index] is view.settings_button
+    asyncio.run(view.key(SimpleNamespace(key='Arrow Down')))
+    assert view.focus_index == 0

@@ -7,6 +7,7 @@ import flet as ft
 
 from gui.portable_setup import MAX_KEYS, Setup, shared_setup
 from pokeldn.app.i18n import t as tr
+from pokeldn.app.catalog import GAMES
 
 RED = "#D83C46"
 DARK_RED = "#A52D39"
@@ -16,6 +17,27 @@ MUTED = "#5C6870"
 CYAN = "#00C8D8"
 GREEN = "#219A59"
 AMBER = "#B67808"
+GAME_NAMES = {
+    "frlg": "Rojo Fuego / Verde Hoja",
+    "lgpe": "Let's Go Pikachu / Eevee",
+    "swsh": "Espada / Escudo",
+    "bdsp": "Diamante Brillante / Perla Reluciente",
+    "pla": "Leyendas Arceus",
+    "sv": "Escarlata / Púrpura",
+}
+PORTABLE_GAMES = tuple(game for game in GAMES if game.key in GAME_NAMES)
+
+
+def game_avatar(game):
+    fallback = ft.Icon(ft.Icons.CATCHING_POKEMON, size=76, color=RED)
+    path = Path(__file__).parent / "assets" / "games" / f"{game.key}.png"
+    image = ft.Image(src=f"games/{game.key}.png", width=100, height=100,
+                     fit=ft.BoxFit.CONTAIN, error_content=fallback,
+                     semantics_label=GAME_NAMES[game.key]) if path.is_file() else fallback
+    return ft.Container(image, width=128, height=128, border_radius=64,
+                        bgcolor="#E4E7E5", alignment=ft.Alignment.CENTER,
+                        clip_behavior=ft.ClipBehavior.ANTI_ALIAS)
+
 
 
 def label(key, fallback, **kwargs):
@@ -29,6 +51,8 @@ class PortableView:
         self.buttons = []
         self.focus_index = 0
         self.local = False
+        self.selected_game = None
+        self.game_list = None
         self.picker = ft.FilePicker()
         self.error = ""
         self.rendered_screen = ""
@@ -125,6 +149,8 @@ class PortableView:
         enabled = [b for b in self.buttons if not b.disabled]
         if enabled:
             target = self.buttons[min(self.focus_index, len(self.buttons) - 1)]
+            if self.screen == "home" and self.focus_index < len(PORTABLE_GAMES):
+                await self.game_list.scroll_to(offset=self.game_scroll_offset(self.focus_index), duration=150)
             await (target if not target.disabled else enabled[0]).focus()
 
     async def key(self, e):
@@ -137,6 +163,18 @@ class PortableView:
                 await self.log_list.scroll_to(delta=-80 if e.key == "Arrow Up" else 80, duration=100)
                 return
             if not self.buttons:
+                return
+            if self.screen == "home":
+                count = len(PORTABLE_GAMES)
+                if e.key == "Arrow Up":
+                    self.focus_index = count
+                elif e.key == "Arrow Down":
+                    self.focus_index = next((i for i, game in enumerate(PORTABLE_GAMES)
+                                             if game == self.selected_game), 0)
+                elif self.focus_index < count:
+                    direction = -1 if e.key == "Arrow Left" else 1
+                    self.focus_index = max(0, min(count - 1, self.focus_index + direction))
+                await self.focus()
                 return
             direction = -1 if e.key in ("Arrow Up", "Arrow Left") else 1
             for _ in self.buttons:
@@ -364,14 +402,53 @@ class PortableView:
             self.status("radio", "Módulo inalámbrico", "ready", "Listo"),
         ], spacing=10, scroll=ft.ScrollMode.AUTO), self.actions(self.button("open", "Abrir mi Pokédex", lambda: self.go("home"), True)))
 
+    def game_scroll_offset(self, index):
+        viewport = (getattr(self.page, "width", None) or 800) - 64
+        maximum = max(0, len(PORTABLE_GAMES) * 182 - 12 + 8 - viewport)
+        return min(maximum, max(0, index * 182 - 182))
+
+    def select_game(self, game):
+        if game not in PORTABLE_GAMES:
+            return
+        self.selected_game = game
+        self.focus_index = PORTABLE_GAMES.index(game)
+        for index, tile in enumerate(self.buttons[:len(PORTABLE_GAMES)]):
+            selected = PORTABLE_GAMES[index] == game
+            tile.style.bgcolor = DARK_RED if selected else PAPER
+            tile.content.controls[1].content.color = "#FFFFFF" if selected else INK
+            tile.style.side[ft.ControlState.DEFAULT] = ft.BorderSide(
+                2, DARK_RED if selected else PAPER)
+        self.page.update()
+
     def view_home(self):
-        self.header_text.value = "POKÉDEX · MODO LOCAL" if self.local else "POKÉDEX · LISTA"
-        return self.layout(self.title("home_title", "Tu taller Pokémon"), ft.Column([
-            ft.Icon(ft.Icons.CATCHING_POKEMON, size=68, color=RED),
-            label("onboarding_done", "Configuración inicial disponible", weight=ft.FontWeight.W_700),
-            label("next_delivery", "Crear Pokémon, banco e intercambios llegarán en la siguiente etapa de la interfaz portátil."),
-        ], spacing=18, horizontal_alignment=ft.CrossAxisAlignment.CENTER, scroll=ft.ScrollMode.AUTO),
-            ft.Container())
+        self.header_text.value = "POKÉDEX · JUEGOS"
+        self.footer.value = "← → Explorar · Enter Elegir · ↑ Ajustes"
+        tiles = []
+        for index, game in enumerate(PORTABLE_GAMES):
+            async def focused(e, index=index):
+                self.focus_index = index
+                await self.game_list.scroll_to(offset=self.game_scroll_offset(index), duration=150)
+            tile = ft.Button(
+                ft.Column([game_avatar(game), ft.Container(
+                    ft.Text(GAME_NAMES[game.key], size=18,
+                            color="#FFFFFF" if game == self.selected_game else INK,
+                            text_align=ft.TextAlign.CENTER, max_lines=3),
+                    height=72, alignment=ft.Alignment.TOP_CENTER)],
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=16,
+                    alignment=ft.MainAxisAlignment.CENTER),
+                width=170, on_click=lambda e, game=game: self.select_game(game),
+                on_focus=focused, tooltip=GAME_NAMES[game.key],
+                style=ft.ButtonStyle(bgcolor=DARK_RED if game == self.selected_game else PAPER, padding=10,
+                    side={ft.ControlState.FOCUSED: ft.BorderSide(3, CYAN),
+                          ft.ControlState.DEFAULT: ft.BorderSide(2, DARK_RED if game == self.selected_game else PAPER)},
+                    shape=ft.RoundedRectangleBorder(radius=18)))
+            tiles.append(tile)
+            self.buttons.append(tile)
+        self.game_list = ft.ListView(tiles, horizontal=True, spacing=12,
+                                    build_controls_on_demand=False, padding=4,
+                                    scroll=ft.ScrollMode.ALWAYS, expand=True)
+        return ft.Column([self.title("choose_game", "Elige el juego"),
+                          self.game_list], spacing=12, expand=True)
 
     async def start(self):
         if not self.setup.initialized:

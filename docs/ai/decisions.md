@@ -57,3 +57,5 @@ El mecanismo `POKELDN_PORTABLE=1` activa el asistente portátil implementado. `P
 - El uso local necesita dependencias y recursos preparados previamente; auditar descargas de assets y actualizaciones antes de prometer funcionamiento completamente desconectado.
 
 El arranque portátil entra directamente a la Pokédex cuando todas las comprobaciones están listas, también al abrir una nueva sesión web. La configuración permanece accesible desde el engranaje; si hay requisitos pendientes se muestra el diagnóstico, y una instalación en curso conserva su vista de progreso.
+
+El inicio muestra una galería de una sola fila con scroll horizontal, avatares circulares y nombres debajo. Se reutilizan los grupos del catálogo estable desde Rojo Fuego/Verde Hoja hasta Escarlata/Púrpura; imágenes locales con Poké Ball de respaldo. La selección permanece en memoria durante la sesión y aún no abre herramientas.
