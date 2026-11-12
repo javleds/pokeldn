@@ -341,3 +341,68 @@ def test_late_move_filter_cannot_replace_new_configuration(team, monkeypatch):
         assert team.candidate_moves(0) == [53]
         assert team.states[0] == 'legal'
     asyncio.run(scenario())
+
+
+@pytest.mark.parametrize('returned', [False, True])
+def test_discovery_return_requires_second_confirmation_and_keeps_first_trainer(launch, monkeypatch, returned):
+    import json
+    import gui.portable_team as module
+    monkeypatch.setattr(module.command, 'random_offer', lambda *args: launch.results[0])
+    async def scenario():
+        await launch.start(discover=True, return_original=True)
+        process = launch.process
+        assert '--trade-back' in process.argv
+        assert process.env['POKELDN_ALLOW_ILLEGAL'] == '0'
+        for name, count in [('Original', 1), ('Other', 2)]:
+            process.line('[trainer] ' + json.dumps(dict(game='sv', source='pokemon', ot=name,
+                                                       tid=123, sid=456, gender=0, language=7)))
+            if count == 1 or returned:
+                process.line(f'[done] trade {count} complete')
+            await asyncio.sleep(0)
+        assert launch.return_pending is not returned
+        if not returned:
+            launch.stop()
+        process.exited(0)
+        await asyncio.sleep(0)
+        assert launch.phase == ('done' if returned else 'stopped')
+        assert launch.trainer['ot'] == 'Original'
+        assert launch.completed == (2 if returned else 1)
+        assert not launch.busy
+        await launch.validate_all()
+    asyncio.run(scenario())
+
+
+def test_return_option_does_not_enable_illegal_team_offers(launch):
+    async def scenario():
+        await launch.start(return_original=True)
+        assert '--trade-back' not in launch.process.argv
+        launch.process.exited(0)
+        await asyncio.sleep(0)
+    asyncio.run(scenario())
+
+
+def test_received_preview_reads_original_without_modifying_it(launch, tmp_path):
+    folder = tmp_path / 'received'
+    folder.mkdir(exist_ok=True)
+    original = folder / 'sv-fixture.pk9'
+    original.write_bytes(b'original unchanged')
+    launch.run_stamp = 'fixture'
+    launch.completed = 1
+    launch.service.legal = False
+    asyncio.run(launch._watch_received('fixture', str(folder)))
+    assert launch.received_info['legal'] is False
+    assert launch.received_path == str(original)
+    assert original.read_bytes() == b'original unchanged'
+
+
+def test_missing_native_original_stops_instead_of_reporting_return_success(launch, monkeypatch):
+    import gui.portable_team as module
+    monkeypatch.setattr(module.command, 'random_offer', lambda *args: launch.results[0])
+    async def scenario():
+        await launch.start(discover=True, return_original=True)
+        launch._line("[trade-back] the console's Pokemon was not kept: the next trade offers the queue")
+        assert launch.process.stopped
+        assert launch.stop_requested and launch.error
+        launch._exited(0)
+        assert launch.phase != 'done'
+    asyncio.run(scenario())

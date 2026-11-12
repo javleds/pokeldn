@@ -76,10 +76,11 @@ class TeamView:
                                    style=ft.ButtonStyle(padding=ft.Padding(10, 2, 10, 2)))
             self.tab_buttons.append(button)
         self.editor = ft.Container(expand=True)
+        self.session_title = text("Intercambios · Equipo", 16, weight=ft.FontWeight.W_700)
         self.session = ft.Column([], spacing=10, expand=True, visible=False, scroll=ft.ScrollMode.AUTO)
         self.status = text("Cargando datos Pokémon…", 12, max_lines=2)
         self.control = ft.Column([
-            ft.Row([self.back, text("Intercambios · Equipo", 16, weight=ft.FontWeight.W_700),
+            ft.Row([self.back, self.session_title,
                     ft.Container(expand=True), self.connection], height=32, spacing=6),
             ft.Row([labeled("Entrenador", self.trainer, width=265), self.trainer_info, self.find,
                     ft.Container(expand=True), self.loader, self.cancel, self.logs, self.clear_all],
@@ -258,9 +259,17 @@ class TeamView:
         self.logs.visible = bool(m.logs) or m.busy
         self.clear_all.visible = not m.busy
         self.clear_one.visible = not m.busy
-        self.editor.visible = not m.busy
-        self.session.visible = m.busy
-        if m.busy:
+        discovery = bool(getattr(m, 'discovering', False))
+        self.session_title.value = 'Identificar entrenador' if discovery else 'Intercambios · Equipo'
+        self.editor.visible = not m.busy and not discovery
+        self.slot_row.visible = not discovery
+        self.control.controls[3].visible = not discovery
+        self.start.visible = not m.busy and not discovery
+        self.clear_all.visible = not m.busy and not discovery
+        self.session.visible = m.busy or discovery
+        if discovery:
+            self._discovery_view()
+        elif m.busy:
             self.session.controls = [text("Buscando entrenador…" if getattr(m, "discovering", False)
                                           else "Intercambio en curso", 23, weight=ft.FontWeight.W_700),
                                      text({"preparing": "Preparando ofertas y comprobando legalidad…",
@@ -299,7 +308,9 @@ class TeamView:
             if getattr(portrait, "portable_wanted", None) != wanted:
                 portrait.portable_wanted = wanted
                 portrait.show(*wanted[:2], form=wanted[2], update=False)
-        error = m.error or self.loading_error or m.errors[self.selected]
+        error = m.error or self.loading_error or ('' if discovery else m.errors[self.selected])
+        if discovery and getattr(m, 'return_pending', False) and not m.busy:
+            error = 'Devolución pendiente: el original no tiene confirmación de regreso. Revisa Received y tu consola.'
         if error:
             self.status.value, self.status.color = error.splitlines()[0], RED
         elif m.busy:
@@ -316,6 +327,8 @@ class TeamView:
             self.status.value, self.status.color = "Cambios pendientes de validación…", MUTED
         else:
             self.status.value, self.status.color = "Selecciona una caja y elige una especie.", MUTED
+        if discovery and not error:
+            self.status.value = 'Identificación · Devolución del original sin modificaciones' if m.return_original else 'Identificación · Solo recepción'
         if self.logs_list is not None:
             self.logs_list.controls = [ft.Text(line, size=12, color="#EAF2EC", selectable=True)
                                        for line in m.logs]
@@ -649,14 +662,60 @@ class TeamView:
             for i in range(0, len(values), 3)], spacing=18), [ft.TextButton("Listo", on_click=self._dismiss)])
 
     def _find_trainer(self, e):
+        return_original = ft.Switch(label="Devolver Pokémon original", value=True)
         async def begin(e):
             self._dismiss()
-            await self.model.start(discover=True)
+            await self.model.start(discover=True, return_original=return_original.value)
             self.refresh()
-        self._dialog("Encontrar mi entrenador", text(
+        self._dialog("Encontrar mi entrenador", ft.Column([text(
             "Se ofrecerá un Pokémon aleatorio legal. Intercambia un Pokémon capturado por ti en este juego. "
-            "Al completar el intercambio, guardaremos los datos compatibles sin reemplazar el entrenador base."),
+            "Guardaremos sus datos sin reemplazar el entrenador base."), return_original,
+            text("Para recuperarlo, realiza un segundo intercambio en la consola. "
+                 "La consola puede aplicar una evolución por intercambio.", 13)], tight=True, spacing=12),
             [ft.TextButton("Cancelar", on_click=self._dismiss), ft.TextButton("Iniciar búsqueda", on_click=begin)])
+
+    def _discovery_view(self):
+        m = self.model
+        received = m.completed >= 1
+        returned = m.completed >= 2
+        heading = ('Original devuelto' if returned else 'Devuelve el Pokémon de cortesía en tu consola'
+                   if received and m.return_original and m.busy else 'Pokémon recibido' if received
+                   else 'Esperando tu Pokémon')
+        if m.phase == 'preparing':
+            heading = 'Preparando oferta legal…'
+        if m.phase == 'stopping':
+            heading = 'Esperando el cierre de la sesión…'
+        info = m.received_info
+        if info:
+            wanted = (info.get('species_id', 0), bool(info.get('shiny')), info.get('form_id', 0))
+            if getattr(self, 'received_sprite_key', None) != wanted:
+                self.received_sprite_key = wanted
+                self.received_sprite = Sprite(self.adapter, wanted[0], wanted[1], size=80, form=wanted[2])
+            card = ft.Row([self.received_sprite.control, ft.Column([
+                text(info.get('nickname') or info.get('species') or 'Pokémon recibido', 21),
+                text(f"{info.get('species', '')} · Nivel {info.get('level', '?')}", 15),
+                text(f"Entrenador original: {info.get('ot', '?')}", 14),
+            ], spacing=6, expand=True)], spacing=16)
+        else:
+            card = text(m.received_error or ('Leyendo datos del Pokémon recibido…' if received
+                        else 'Ofrece un Pokémon capturado por ti para identificar al entrenador.'), 16)
+        def stage(label, done):
+            return ft.Row([ft.Icon(ft.Icons.CHECK_CIRCLE if done else ft.Icons.SCHEDULE,
+                                  color=GREEN if done else MUTED, size=20), text(label, 15)], spacing=6)
+        stages = [stage('Recibir e identificar', received)]
+        if m.return_original:
+            stages.append(stage('Devolver original', returned))
+        controls = [text(heading, 21, weight=ft.FontWeight.W_700), ft.Row(stages, spacing=24),
+                    ft.Container(card, bgcolor='#E4E7E5', padding=12, border_radius=12)]
+        if m.found_trainer:
+            controls.append(text(f"Entrenador identificado: {m.found_trainer.get('ot', '')}", 14))
+        if not m.busy:
+            def close(e):
+                m.discovering = False
+                self._draw_editor()
+                self.refresh()
+            controls.append(ft.TextButton('Volver a Equipo', on_click=close))
+        self.session.controls = controls
 
     def _connection(self, e):
         m = self.model
@@ -693,7 +752,9 @@ class TeamView:
             self.refresh()
         self._dialog("¿Cancelar el intercambio?", text(
             "Se solicitará el cierre de pokeLDN. Un intercambio confirmado no se deshace. "
-            "Espera a que la sesión termine antes de desconectar la placa."),
+            "Espera a que la sesión termine antes de desconectar la placa. "
+            + ("Ya recibimos tu Pokémon: cancelar ahora puede dejar su devolución pendiente; "
+               "no hay reanudación automática." if getattr(self.model, 'return_pending', False) else "")),
             [ft.TextButton("Continuar", on_click=self._dismiss), ft.TextButton("Solicitar cancelación", on_click=stop)])
 
     def _logs(self, e):

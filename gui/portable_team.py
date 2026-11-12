@@ -93,6 +93,10 @@ class Team:
         self.completed = 0
         self.active_slots = []
         self.discovering = False
+        self.return_original = False
+        self.received_info = None
+        self.received_path = ''
+        self.received_error = ''
         self.found_trainer = None
         self.stop_requested = False
         self.metadata = {}
@@ -416,14 +420,18 @@ class Team:
             if f.key == '--version':
                 values[f.key] = self.version
         values['--fresh-pid'] = False
-        values['--trade-back'] = False
+        values['--trade-back'] = self.discovering and self.return_original
         return values
 
-    async def start(self, discover=False):
-        # Closing a web tab must not strand preparation with the shared radio reserved.
-        await asyncio.shield(self._start(discover))
+    @property
+    def return_pending(self):
+        return self.discovering and self.return_original and self.completed == 1
 
-    async def _start(self, discover=False):
+    async def start(self, discover=False, return_original=False):
+        # Closing a web tab must not strand preparation with the shared radio reserved.
+        await asyncio.shield(self._start(discover, return_original))
+
+    async def _start(self, discover=False, return_original=False):
         if self.busy or self.setup.busy or self.setup.checking or self.setup.session_busy:
             return
         if not discover and not self.can_start:
@@ -438,6 +446,9 @@ class Team:
         self.setup.active_team = self
         self.phase, self.error, self.completed = 'preparing', '', 0
         self.discovering, self.found_trainer, self.stop_requested = discover, None, False
+        self.return_original = discover and return_original
+        self.run_stamp = ''
+        self.received_info, self.received_path, self.received_error = None, '', ''
         self.active_slots = [] if discover else [i for i, s in enumerate(self.slots) if s is not None]
         self.logs.clear()
         self.notify()
@@ -473,6 +484,8 @@ class Team:
                 target.chmod(0o600)
                 files.append(target)
             tool = self.tools[self.role]
+            if self.return_original and not any(f.key == '--trade-back' for f in tool.fields):
+                raise ValueError('Esta herramienta no admite devolver el original.')
             values = self._values(tool, files)
             if problems := command.problems(tool, values):
                 raise ValueError(str(problems[0]))
@@ -504,6 +517,8 @@ class Team:
                 lambda line: loop.call_soon_threadsafe(self._line, line),
                 lambda code: loop.call_soon_threadsafe(self._exited, code),
                 popups=self.popups, label='Intercambios · Equipo')
+            if discover:
+                asyncio.create_task(self._watch_received(stamp, run_settings.received))
         except Exception as exc:
             self.error = self.redact(error_message(exc))
             self.log(self.error)
@@ -513,13 +528,43 @@ class Team:
 
     def _line(self, line):
         self.log(line)
+        if self.discovering and self.return_original and line.startswith("[trade-back] the console's Pokemon was not kept:"):
+            self.error = 'pokeLDN no conservó el original para devolverlo. Revisa los logs y la consola.'
+            self.stop()
+            return
         count = received.trades_done(line)
         if count is not None:
-            self.completed = max(self.completed, min(count, 1 if self.discovering else len(self.active_slots)))
-        if self.discovering and (found := console_trainer.read(line)) and found.get('game') == self.game:
+            expected = (2 if self.return_original else 1) if self.discovering else len(self.active_slots)
+            self.completed = max(self.completed, min(count, expected))
+        if self.discovering and not self.found_trainer and (found := console_trainer.read(line)) and found.get('game') == self.game:
             if found.get('source') in ('session', 'pokemon'):
                 self.found_trainer = found
         self.notify()
+
+    async def _watch_received(self, stamp, folder):
+        # Read only the first saved record of this run. The native trade-back
+        # owns the original bytes; this metadata is never used as an offer.
+        while self.run_stamp == stamp:
+            files = await asyncio.to_thread(received.session_files, folder, stamp)
+            if files and self.completed:
+                try:
+                    data = await asyncio.to_thread(Path(files[0]).read_bytes)
+                    info = await asyncio.to_thread(self.service.check_bytes, self.game, data)
+                except (OSError, ValueError, pokemon.BuilderError):
+                    info = None
+                if self.run_stamp != stamp:
+                    return
+                self.received_path = files[0]
+                if info is not None:
+                    self.received_info = info
+                    self.notify()
+                    return
+            if not self.busy:
+                if self.completed and self.received_info is None:
+                    self.received_error = 'No se pudo mostrar el archivo recibido. Revisa los logs y la carpeta Received.'
+                    self.notify()
+                return
+            await asyncio.sleep(.3)
 
     def _exited(self, code):
         if self.discovering and self.completed and self.found_trainer:
@@ -539,13 +584,16 @@ class Team:
                 self.error = f'No se guardó el entrenador: {exc}'
         elif self.discovering and not self.stop_requested and not self.error:
             self.error = 'No se pudo identificar un entrenador compatible en un intercambio confirmado.'
-        expected = 1 if self.discovering else len(self.active_slots)
+        expected = (2 if self.return_original else 1) if self.discovering else len(self.active_slots)
         self.phase = ('stopped' if self.stop_requested else 'done' if code == 0 and self.completed == expected and not self.error else 'error')
         if self.phase == 'error' and not self.error:
             self.error = 'La sesión terminó sin confirmar todos los intercambios. Revisa los logs y la consola.'
         self.busy = self.setup.session_busy = False
         self.setup.active_team = None
         self.process = None
+        if self.return_pending:
+            self.log('Devolución pendiente: no se confirmó el segundo intercambio. '
+                     'Conserva los archivos de Received; no hay reanudación automática.')
         self.notify()
         if self.discovering and self.completed and self.found_trainer and not self.error:
             asyncio.get_running_loop().create_task(self.validate_all())

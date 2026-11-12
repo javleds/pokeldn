@@ -115,3 +115,11 @@ Suite enfocada reproducible, con el SDK local exportado como arriba:
 ```
 
 Para repetir la previsualización de esta sesión sin mezclar datos con la configuración normal, añadir `POKELDN_DATA="$PWD/.local-preview/portable"` al comando web. No borrar ese directorio al retomar ni versionar sus datos. La última corrección de arranque tiene cobertura automatizada; queda pendiente repetir su prueba visual con varias pestañas.
+
+### Identificación y devolución (spec 007)
+
+`Team.start(discover=True, return_original=True)` habilita `--trade-back` únicamente en identificación y exige dos eventos `[done]`. La oferta inicial conserva check estricto y `allow_illegal=False`; la devolución se realiza dentro de `pokeldn.trade_back`, sin generar una copia ni cambiar PID. La UI no envía los datos que obtiene de PKHeX para la tarjeta.
+
+`_watch_received` consulta los archivos de la sesión usando `run_stamp`, lee el primero y obtiene metadatos fuera del loop de UI. Una lectura tardía no debe cruzar sesiones; un fallo de lectura no detiene la devolución nativa. El perfil sigue dependiendo de un evento de entrenador compatible y recepción confirmada, como en el flujo anterior. No certificar identificación para todas las combinaciones de juego/rol sin prueba real.
+
+Validación: 117 pruebas de portátil y trade-back aprobadas (las simulaciones con UDP necesitaron permiso de sockets locales); tras añadir detección del aviso nativo de original no conservado, 53 pruebas de controlador/vista aprobadas. Vista de recepción inspeccionada a 800 × 480 mediante fixture sin radio. Referencia: `docs/specs/references/implemented-trainer-return-demo-800x480.jpg`. Sin intercambio físico ni certificación de recuperación tras interrupción.

@@ -76,3 +76,9 @@ Para futuros modos de recepción se autoriza devolver el original intacto aunque
 - Los candidatos de movimientos se filtran por configuración de caja. El filtro no garantiza legalidad conjunta ni exhaustividad de orígenes posibles: PKHeX sigue validando el resultado final. Conservar visibles los valores elegidos que queden fuera del filtro; no borrarlos automáticamente.
 - Los desplegables deben dejar visible el campo de búsqueda y poder cerrarse sin elegir. El límite actual es 280 × 160 dentro de la pantalla 800 × 480.
 - El salto automático al menú de juegos se aplica al arranque, incluso si otra sesión completa los checks. Abrir Ajustes manualmente no debe provocar un salto de vuelta por una notificación de estado.
+
+### Identificar entrenador con devolución
+
+Se añade «Devolver Pokémon original» al diálogo de identificación; inicialmente activado, puede desactivarse para usar la recepción única anterior. Reutiliza trade-back nativo: oferta inicial legal, recepción y segundo intercambio para devolver bytes intactos. La excepción de original ilegal se aplica aquí sin ampliar permisos de Equipo. La consola puede aplicar evolución por intercambio.
+
+La pantalla muestra etapas, sprite/datos recibidos, entrenador identificado, logs y cancelación. Solo una segunda confirmación permite marcar el original devuelto. El perfil del primer intercambio no se reemplaza con el del segundo. Si la sesión se corta tras recibir, se advierte devolución pendiente; los archivos guardados por upstream se conservan, pero no existe reanudación automática ni reenvío genérico. Véase spec 007.

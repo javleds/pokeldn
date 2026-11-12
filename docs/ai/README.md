@@ -22,7 +22,7 @@ Primer incremento de configuración portátil implementado: diagnóstico, claves
 
 El repositorio de trabajo es `javleds/pokeldn`, derivado de `Decryptu/pokeldn`. El Git vacío del directorio padre fue retirado por petición del usuario; el fork y sus archivos permanecen intactos. La asociación visual de la conversación con un proyecto de Codex no cambia la raíz Git.
 
-La sesión queda pausada por petición del usuario, después de implementar reutilización de selectores y filtros por caja, corregir el tamaño de desplegables y ajustar la transición de arranque con comprobaciones compartidas entre pestañas. No iniciar otra modalidad por iniciativa propia al retomar. El detalle y los límites de verificación están en el punto de pausa.
+El punto de pausa conserva el cierre de la etapa de selectores. Después, el usuario autorizó identificar entrenador con devolución opcional del original: implementado mediante trade-back y una vista de recepción/devolución, documentado en [spec 007](../specs/007-trainer-return.md). No activa las otras modalidades. La prueba física sigue pendiente.
 
 ## Cómo mantener este contexto
 

@@ -30,5 +30,6 @@ Estas capturas corresponden a la primera implementación Flet. La demo simula ú
 - [Selectores compactos](implemented-team-compact-800x480.jpg).
 - [Equipo con opciones filtradas](implemented-team-filtered-800x480.jpg).
 - [Búsqueda con desplegable acotado](implemented-dropdown-bounded-800x480.jpg).
+- [Identificación y devolución: recibido simulado a 800 × 480](implemented-trainer-return-demo-800x480.jpg). Fixture visual sin radio; no demuestra intercambio físico.
 
 El wireframe simula también modalidades futuras. La captura corresponde al modo Equipo funcional con generación/validación local; no acredita un intercambio físico.

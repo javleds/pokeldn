@@ -270,3 +270,33 @@ def test_dynamically_populated_selector_keeps_bounded_menu():
     assert dropdown.width == 280
     assert dropdown.menu_style.max_size.width == 280
     assert dropdown.menu_style.max_size.height == 160
+
+
+def test_find_trainer_offers_optional_original_return():
+    ui = view()
+    ui._find_trainer(None)
+    dialog = ui.page.show_dialog.call_args.args[0]
+    switch = dialog.content.content.controls[1]
+    assert switch.value is True
+    switch.value = False
+    asyncio.run(dialog.actions[1].on_click(None))
+    ui.model.start.assert_awaited_once_with(discover=True, return_original=False)
+
+
+def test_discovery_received_view_keeps_actions_and_hides_editor():
+    ui = view()
+    m = ui.model
+    m.discovering = m.return_original = m.busy = True
+    m.completed = 1
+    m.return_pending = True
+    m.received_info = {'species_id': 7, 'species': 'Squirtle', 'level': 5, 'ot': 'Fixture'}
+    m.received_error = ''
+    m.found_trainer = {'ot': 'Fixture'}
+    ui.refresh(update=False)
+    assert ui.session.visible and not ui.editor.visible and not ui.slot_row.visible
+    assert ui.logs.visible and ui.cancel.visible and ui.loader.visible
+    m.busy = False
+    m.phase = 'stopped'
+    ui.refresh(update=False)
+    assert 'Devolución pendiente' in ui.status.value
+    assert ui.session.visible and not ui.cancel.visible
