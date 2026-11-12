@@ -223,6 +223,10 @@ class HostApplication:
             self.info("Received the Switch RFU identity; sending join-status NI.")
         if "disconnect" in events:
             activity = self._activity()
+            gate = getattr(activity, 'return_gate', None)
+            if gate is not None and activity.round < 2:
+                gate.close()
+                raise RuntimeError('The native return participant disconnected.')
             state = getattr(activity, "state", None)
             battle = getattr(activity, "battle", None)
             if getattr(activity, "close_confirmed", False):

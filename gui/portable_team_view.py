@@ -84,10 +84,15 @@ class TeamView:
                 tooltip="Aplicar máximos a esta caja. Desmarcar vuelve a Automático.",
                 on_change=lambda e, group=group: self._toggle_max(group, e.control.value))
         self.session_title = text("Intercambios · Equipo", 16, weight=ft.FontWeight.W_700)
+        from gui.portable_received import MODES
+        self.mode_menu = ft.PopupMenuButton(content=ft.Row([self.session_title,
+            ft.Icon(ft.Icons.ARROW_DROP_DOWN, color=INK)], spacing=4), tooltip='Modalidad de intercambio',
+            items=[ft.PopupMenuItem(content=title, height=36, checked=key == 'team',
+                on_click=lambda e, key=key: self.shell.open_trade_mode(key)) for key, title in MODES.items()])
         self.session = ft.Column([], spacing=10, expand=True, visible=False, scroll=ft.ScrollMode.AUTO)
         self.status = text("Cargando datos Pokémon…", 12, max_lines=2)
         self.control = ft.Column([
-            ft.Row([self.back, self.session_title,
+            ft.Row([self.back, self.mode_menu,
                     ft.Container(expand=True), self.connection], height=32, spacing=6),
             ft.Row([labeled("Entrenador", self.trainer, width=265), self.trainer_info, self.find,
                     ft.Container(expand=True), self.loader, self.cancel, self.logs, self.clear_all],
@@ -274,6 +279,7 @@ class TeamView:
         self.clear_all.visible = not m.busy
         self.clear_one.visible = not m.busy
         discovery = bool(getattr(m, 'discovering', False))
+        self.mode_menu.disabled = m.busy
         draft = m.slots[self.selected]
         for group, checkbox in self.max_checks.items():
             maximum = self._maximum(group)

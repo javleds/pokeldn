@@ -570,10 +570,14 @@ def main(argv=None):
             print(f"[sw] <- {st.ip} mesh {payload.hex()}")
             return
         if st.ip in trades:
+            if isinstance(partner, trade_back.TradeBack) and partner.gate is not None:
+                partner.gate.bind((st, st.variable, transport.join_events))
             guarded(trades[st.ip].on_data, protocol, port, payload)
 
     def on_broadcast(st, port, payload, flags):
         if st.ip in trades:
+            if isinstance(partner, trade_back.TradeBack) and partner.gate is not None:
+                partner.gate.bind((st, st.variable, transport.join_events))
             guarded(trades[st.ip].on_broadcast, port, payload, bool(flags & 0x10))
 
     def on_other(st, protocol, port, payload):
@@ -585,6 +589,8 @@ def main(argv=None):
         print(f"[sw] <- {st.ip} {protocol:#04x}/{port} (unhandled) {payload.hex()[:96]}")
 
     def start_trade(st):
+        if isinstance(partner, trade_back.TradeBack) and partner.gate is not None:
+            partner.gate.bind((st, st.variable, transport.join_events))
         def send(protocol, port, payload):
             host.send_data(st.ip, protocol, port, payload)
             record({"rec": "app_tx", "dst": st.ip, "protocol": protocol, "port": port,
@@ -741,7 +747,10 @@ def main(argv=None):
                 print(f"[sw] closing the network {now - host.migrating:.1f} s after the handover, "
                       f"{len(host.stations)} station(s) left in it")
                 break
-            for tr in list(trades.values()):
+            for ip, tr in list(trades.items()):
+                if isinstance(partner, trade_back.TradeBack) and partner.gate is not None:
+                    st = host.stations[ip]
+                    partner.gate.bind((st, st.variable, transport.join_events))
                 guarded(tr.tick, now)
                 if tr.trades > seen.get(tr, 0):
                     completed[0] += tr.trades - seen.get(tr, 0)

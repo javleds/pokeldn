@@ -64,7 +64,7 @@ El inicio muestra una galería de una sola fila con scroll horizontal, avatares 
 
 El diseño aprobado y las modalidades futuras se conservan en [spec 005](../specs/005-portable-trades.md), junto con el wireframe interactivo. Equipo es el primer modo implementado: seis cajas, autoguardado, build y validación al confirmar cambios, primer error visible, envío bloqueado hasta tener todas las ofertas legales actuales. Perfil base intacto y perfiles adicionales por juego. Solo conexión local; anfitrión/unirse según catálogo. Durante sesión se bloquea edición, se muestran progreso confirmado, logs y cancelación con confirmación.
 
-Para futuros modos de recepción se autoriza devolver el original intacto aunque sea ilegal; la excepción nunca permite enviar una copia editada ilegal ni ofertas ilegales de Equipo. Validador usará tarjeta de estado y modal de informe, sin scroll principal. Modificador abrirá el editor automáticamente al recibir, manteniendo acciones arriba.
+Para los modos de recepción se autoriza devolver el original intacto aunque sea ilegal; la excepción nunca permite enviar una copia editada ilegal ni ofertas ilegales de Equipo. Validador usa tarjeta de estado y modal de informe, sin scroll principal. Modificador abre el editor automáticamente al recibir, manteniendo acciones arriba.
 
 ### Editor y selectores de Equipo
 
@@ -90,3 +90,11 @@ Por petición del usuario, EVs máximos y amistad máxima están disponibles por
 ### Preservación de decisiones y búsqueda (spec 009)
 
 El usuario pide documentar cada decisión para evitar regresiones al incorporar nuevas instrucciones. AGENTS exige leer los contratos de UI y registrar acuerdos/pruebas. Se reafirma que el foco vacía la consulta sin alterar la elección del modelo. En Flet 1.0.5 se debe limpiar también el valor temporal del widget, conservando la elección en data/modelo; asignar text solamente no basta. Las comprobaciones Python deben complementarse con el cliente real.
+
+### Modalidades de recepción activadas
+
+El usuario autorizó continuar las seis modalidades descritas en spec 005. Implementación en spec 010: menú en cabecera, oferta inicial aleatoria legal, original separado de copia y devolución dentro de la misma sesión nativa. Nivel, Naturaleza y EVs devuelven automáticamente la copia si pasa legalidad; si falla, muestran el primer error y permiten devolver el original. Modificador abre automáticamente el editor y requiere elegir devolver copia legal u original intacto. Validador conserva el informe completo en logs/modal y devuelve original, incluso si es ilegal. Evolución devuelve original; la consola decide la evolución según requisitos.
+
+La opción de máximos en Modificador vuelve al valor del original al desmarcar, porque allí no se genera otro Pokémon. En Equipo sigue volviendo a Automático. No sobrescribir entrenador ni origen al editar; algunos cambios explícitos ligados al PID pueden resultar imposibles legalmente. No reparar el formulario ni sustituir el original silenciosamente.
+
+Se conserva un registro privado de originales y devoluciones pendientes. Al reiniciar/configurar otra sesión no se reenvían automáticamente: es necesario verificar destinatario y la recuperación automática sigue fuera de alcance. La exclusión de radio permanece activa aunque el formulario de Modificador esté habilitado.

@@ -158,6 +158,11 @@ class HostTradeEngine:
             offered_slots, trade_slot, trades, party_size=len(self.party))
         if any(i >= len(self.party) for i in self.offered_slots):
             raise ValueError("offered slot exceeds party size")
+        from pokeldn.portable_return import ReturnGate
+        self.return_gate = ReturnGate.from_environment('frlg', log)
+        self._return_applied = False
+        if self.return_gate is not None and (trades != 2 or self.offered_slots[0] != self.offered_slots[1] or partner is not None):
+            raise ValueError('Controlled return needs one native offer followed by its return.')
         if link_player is not None and profile is not None:
             raise ValueError("supply link_player or profile, not both")
         self.lp = (profile.to_link_player() if profile is not None else link_player) \
@@ -485,6 +490,12 @@ class HostTradeEngine:
                   "what starts the battle.")
 
     def _begin_party_exchange(self):
+        if self.return_gate is not None and self.round == 1 and not self._return_applied:
+            returned = self.return_gate.current()
+            if returned is None:
+                return  # Keep servicing save/standby polls; publish no next party yet.
+            self.party[self.offered_slots[1]] = monmod.Mon(returned)
+            self._return_applied = True
         self._set_state(H_PARTY)
         self.child_party = bytearray(600)
         self._party_pair = 0
@@ -1090,6 +1101,8 @@ class HostTradeEngine:
         if received is None:
             raise RuntimeError("cannot commit without child selection")
         self.received_mons.append(received)
+        if self.return_gate is not None and self.round == 0:
+            self.return_gate.begin(received.raw)
         if host_slot is not None:
             self.party[host_slot] = received
         self.round += 1

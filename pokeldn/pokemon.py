@@ -243,6 +243,24 @@ class Service:
         return self._ask({"cmd": "check", "game": game, "data": base64.b64encode(data).decode(),
                           "fresh": fresh, "fields": fields or {}})
 
+    def edit_received(self, game: str, data: bytes, fields: dict | None = None) -> dict:
+        """Edit a copy of an existing record, preserving its origin and trainer.
+
+        Returns legality, report, serialized data and an ``editable`` numeric snapshot.
+        An illegal result remains inspectable; callers must never offer it as an edit.
+        The original input must be retained separately for byte-identical returns.
+        """
+        if not isinstance(game, str) or game not in RECORD_SIZES or len(data) > RECORD_LIMIT:
+            raise BuilderError("This is not a Pokemon record of the selected game.")
+        try:
+            record = entity_bytes(game, data)
+        except ValueError as exc:
+            raise BuilderError("This is not a Pokemon record of the selected game.") from exc
+        if len(record) not in RECORD_SIZES[game]:
+            raise BuilderError("This is not a Pokemon record of the selected game.")
+        return self._ask({"cmd": "edit_received", "game": game,
+                          "data": base64.b64encode(record).decode(), "fields": fields or {}})
+
     def check(self, game: str, path: str, fields=None) -> dict:
         return self.check_bytes(game, Path(path).expanduser().read_bytes(), fields=fields)
 

@@ -274,6 +274,12 @@ class TradeEngine:
                                                    party_size=len(self.party))
         if any(s >= len(self.party) for s in self.offered_slots):
             raise ValueError(f"offered_slots {self.offered_slots} exceed party size {len(self.party)}")
+        from pokeldn.portable_return import ReturnGate
+        self.return_gate = ReturnGate.from_environment('frlg', log)
+        self._return_applied = False
+        self._return_req = None
+        if self.return_gate is not None and (trades != 2 or self.offered_slots[0] != self.offered_slots[1]):
+            raise ValueError('Controlled return needs one offer followed by its return.')
         self.round = 0
         self.received_mons = []
         self.leaving = False
@@ -573,6 +579,9 @@ class TradeEngine:
             # serving it would send the next party pair early.
             return
         size = REQ_SIZE.get(reqtype, 200)
+        if size == 200 and self.return_gate is not None and self.round == 1 and not self._return_applied:
+            self._return_req = reqtype
+            return  # Do not serialize/send the next party while editing is pending.
         buf = self._block_for_size(reqtype, size)
         self.log(f"REQ type={reqtype} size={size} -> send {len(buf)}B")
         self._begin_send(buf)
@@ -796,6 +805,8 @@ class TradeEngine:
         offered_slot = self.offered_slots[self.round]
         received = self.incoming_mon()
         if received is not None:
+            if self.return_gate is not None and self.round == 0:
+                self.return_gate.begin(received.raw)
             self.received_mon = received
             self.received_mons.append(received)
             self.info("Trade confirmed.")
@@ -918,6 +929,16 @@ class TradeEngine:
     def tick(self, sender_only=False):
         """sender_only: advance only the block sender, so a HOLD tick never runs the entry
         barrier in a call whose words poll_send_done discards."""
+        if self.return_gate is not None and self.round == 1 and not self._return_applied:
+            returned = self.return_gate.current()
+            if returned is not None:
+                self.party[self.offered_slots[1]] = monmod.Mon(returned)
+                self._party600 = monmod.build_player_party(self.party)
+                self._party_blocks = monmod.party_blocks(self._party600)
+                self._return_applied = True
+                if self._return_req is not None:
+                    request, self._return_req = self._return_req, None
+                    self._on_req(request)
         words = self._tick_sender(sender_only)
         if words is not None:
             return words

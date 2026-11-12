@@ -1,6 +1,6 @@
 # Contratos de UI portátil
 
-Leer antes de modificar las vistas. Nuevas peticiones son incrementales: no anulan estos acuerdos salvo instrucción expresa. Detalle funcional en decisiones y specs 005–009.
+Leer antes de modificar las vistas. Nuevas peticiones son incrementales: no anulan estos acuerdos salvo instrucción expresa. Detalle funcional en decisiones y specs 005–010.
 
 | Área | Comportamiento que debe conservarse |
 |---|---|
@@ -16,6 +16,10 @@ Leer antes de modificar las vistas. Nuevas peticiones son incrementales: no anul
 | Máximos | Checkboxes EV/amistad por caja en fila de pestañas; sin modificar IVs. Desmarcar → Automático. No son reglas persistentes para nuevas especies |
 | Sesión | Edición bloqueada, loader, logs y cancelación con confirmación. Éxito depende de eventos, no solo salida del proceso |
 | Identificación | Devolución opcional nativa del original, dos confirmaciones, perfil del primer intercambio. Cancelación entre rondas → devolución pendiente, sin promesa de recuperación automática |
+| Modalidades recibidas | Evolución/Nivel/Naturaleza/EVs/Modificador/Validador desde cabecera; no borrar Equipo. Original separado; copia ilegal bloqueada; original intacto permitido |
+| Modificador | Abrir editor al recibir, acciones devolver original/copia/logs/cancelar arriba. Editar no libera radio ni habilita cambiar juego/rol/modo. No generar otro Pokémon para aplicar cambios |
+| Validador | Tarjeta verde/roja/neutra; informe completo en modal y logs, sin scroll principal. Informe persiste después de devolver |
+| Nuevo intercambio | Acción explícita de configuración tras terminar; conserva aviso y archivos de devoluciones pendientes. No reenvío automático en otra sesión |
 
 ## Particularidad de Flet 1.0.5
 

@@ -181,7 +181,8 @@ async def main_async(args):
             print(f"[cx] trade {n} offers species {offered['species']}, {offered['nickname']!r}, "
                   f"OT {offered['ot_name']!r}, IVs {offered['ivs']}, pid {offered['pid']:08x}")
         # --trade-back: every other round returns the console's last PB8 as it came (docs/architecture.md)
-        rounds = trade_back.Rounds(st["our_pokes"]) if args.trade_back else None
+        rounds = trade_back.Rounds.controlled('bdsp', st["our_pokes"]) if args.trade_back else None
+        st['portable_poke_pending'] = False
 
         def our_offer():
             if rounds:
@@ -1108,6 +1109,8 @@ async def main_async(args):
             """Answer the console's half of a trade, its trainer and then its Pokemon, with ours."""
             if not args.trade_reply:
                 return
+            if st['portable_poke_pending'] and g['data_id'] != room.TRADE_POKE:
+                return  # No confirmation for the next round before its offer is ready.
             if g["data_id"] == room.TRADE_POKE_CHECK_OK:
                 # `46 00 01 01`: it found our Pokemon acceptable. Echo it and nothing more; the next
                 # message leads to the console writing its save.
@@ -1162,7 +1165,7 @@ async def main_async(args):
                     screen.received("bdsp", st["their_raw"])
                     if rounds:
                         rounds.done(st["their_raw"])
-                    if st["our_pokes"]:
+                    if st["our_pokes"] and our_offer() is not None:
                         screen.offer("bdsp", our_offer())
                 reply = room.build_trade_ready_ok(st["our_security_state"], is_trade_ok=1)
                 st["ready_oks_sent"] += 1
@@ -1209,6 +1212,9 @@ async def main_async(args):
                 if not st["our_pokes"]:
                     print("[cx] no --trade-template, so nothing to offer back")
                     return
+                if our_offer() is None:
+                    st['portable_poke_pending'] = True
+                    return
                 reply = room.build_trade_poke(our_offer())
                 label = "our Pokemon"
             send_trade_message(reply, label, now)
@@ -1246,6 +1252,14 @@ async def main_async(args):
                 send_trade_message(
                     room.build_trade_ready_ok(st["our_security_state"], is_trade_ok=1),
                     f"repeat state {room.TRADE_STATE_NAMES.get(st['our_security_state'])}", now)
+
+        async def release_portable_return():
+            while True:
+                await trio.sleep(.1)
+                if st['portable_poke_pending'] and our_offer() is not None:
+                    st['portable_poke_pending'] = False
+                    screen.offer('bdsp', our_offer())
+                    send_trade_message(room.build_trade_poke(our_offer()), 'controlled return', time.monotonic() - t0)
 
         def note_their_state(fields, now):
             """Track the console's OpcState; an emote shows as `state 4 isRecruiment 1`."""
@@ -1517,6 +1531,8 @@ async def main_async(args):
                 nursery.start_soon(stop_on_signal, hold_scope)
                 nursery.start_soon(receiver)
                 nursery.start_soon(sender)
+                if rounds and rounds.gate is not None:
+                    nursery.start_soon(release_portable_return)
                 if args.match_wait and args.match_wait_period > 0:
                     nursery.start_soon(keep_saying_match_wait)
                 if args.initiate_talk:

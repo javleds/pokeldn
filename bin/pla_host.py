@@ -627,6 +627,9 @@ def main():
                                 print(f"[pla] {src_ip}: join request did not parse, "
                                       f"{msg.payload[:16].hex()}")
                                 continue
+                            if args.trade_back and os.environ.get("POKELDN_RETURN_DIR"):
+                                gate = online_box(src_ip).partner.gate
+                                gate.bind((src_ip, j["source_constant_id"], j["source_var"], transport.join_events))
                             # A new join is a fresh session: the console re-rolls its variable id
                             # and restarts its streams at 1.
                             reliable_high.pop(src_ip, None)

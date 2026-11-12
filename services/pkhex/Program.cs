@@ -77,6 +77,7 @@ static partial class Program
                     "paste" => Paste(game, request),
                     "check" => Check(game, Convert.FromBase64String((string)request["data"]!), request),
                     "owner" => Owner(game, Convert.FromBase64String((string)request["data"]!)),
+                    "edit_received" => EditReceived(game, Convert.FromBase64String((string)request["data"]!), request["fields"]?.AsObject() ?? new()),
                     "gift" => Gift(Convert.FromBase64String((string)request["data"]!)),
                     "events" => Events(),
                     "event" => Event(game, request),
@@ -996,6 +997,176 @@ static partial class Program
             }
             return shiny ? "is no longer shiny: its encounter fixes its PID, and the PID is shiny only for its first trainer"
                          : "is shiny for you: its encounter fixes its PID";
+        }
+
+        JsonObject EditReceived(Game game, byte[] data, JsonObject fields)
+        {
+            var pk = Parse(game, data);
+            if (!pk.ChecksumValid) throw new InvalidDataException("The Pokemon checksum is invalid.");
+            string[] supported = ["species", "form", "nickname", "level", "shiny", "moves", "nature", "ability",
+                "gender", "held_item", "ball", "friendship", "ivs", "effort", "alpha", "gigantamax", "dynamax_level", "tera"];
+            foreach (var key in fields.Select(f => f.Key))
+                if (!supported.Contains(key))
+                    throw new ArgumentException($"Unsupported received edit {key}.");
+            int Number(JsonNode? node, string name, int min, int max)
+            {
+                var value = node?.GetValue<int>() ?? throw new ArgumentException($"{name} needs a number.");
+                if (value < min || value > max)
+                    throw new ArgumentException($"{name} must be between {min} and {max}.");
+                return value;
+            }
+            int Read(string key, int min, int max) => Number(fields[key], key, min, max);
+            // Parse an independent record. Never call Make, Retrain, or fresh-PID generation.
+            var originalNature = pk.Nature;
+            var originalGender = pk.Gender;
+            var originalShiny = pk.IsShiny;
+            if (fields.ContainsKey("species")) pk.Species = (ushort)Read("species", 1, game.Table.MaxSpeciesID);
+            if (fields.ContainsKey("form")) pk.Form = (byte)Read("form", 0, 255);
+            if (!game.Table.IsPresentInGame(pk.Species, pk.Form))
+                throw new ArgumentException("This species or form is absent from the selected game.");
+            if (fields.ContainsKey("level")) pk.CurrentLevel = (byte)Read("level", 1, 100);
+            if (fields.ContainsKey("nickname"))
+            {
+                var nickname = fields["nickname"]!.GetValue<string>();
+                if (nickname.Length > (pk.Format <= 3 ? 10 : 12))
+                    throw new ArgumentException("The nickname is too long for this game.");
+                if (nickname.Length == 0) pk.ClearNickname(); else pk.SetNickname(nickname);
+            }
+            if (pk is G3PKM && (fields.ContainsKey("nature") || fields.ContainsKey("gender") || fields.ContainsKey("shiny")))
+            {
+                var nature = fields.ContainsKey("nature") ? (Nature)Read("nature", 0, 24) : originalNature;
+                var gender = fields.ContainsKey("gender") ? (byte)Read("gender", 0, 2) : originalGender;
+                var shiny = fields.ContainsKey("shiny") ? fields["shiny"]!.GetValue<bool>() : originalShiny;
+                SetReceivedPid(pk, nature, gender, shiny);
+            }
+            else
+            {
+                if (fields.ContainsKey("nature"))
+                {
+                    var nature = (Nature)Read("nature", 0, 24);
+                    if (pk.Format >= 8) pk.StatAlignment = nature;
+                    else pk.Nature = nature;
+                }
+                if (fields.ContainsKey("gender")) pk.Gender = (byte)Read("gender", 0, 2);
+                if (fields.ContainsKey("shiny") && fields["shiny"]!.GetValue<bool>() != pk.IsShiny)
+                    pk.SetIsShiny(fields["shiny"]!.GetValue<bool>());
+            }
+            if (fields.ContainsKey("ability"))
+            {
+                var ability = Read("ability", 1, pk.MaxAbilityID);
+                var slot = Enumerable.Range(0, pk.PersonalInfo.AbilityCount)
+                    .FirstOrDefault(i => pk.PersonalInfo.GetAbilityAtIndex(i) == ability, -1);
+                if (slot < 0) throw new ArgumentException("This ability is unavailable for the selected species and form.");
+                pk.RefreshAbility(slot);
+            }
+            if (fields.ContainsKey("held_item")) pk.HeldItem = Read("held_item", 0, pk.MaxItemID);
+            if (fields.ContainsKey("ball")) pk.Ball = (byte)Read("ball", 1, pk.MaxBallID);
+            if (fields.ContainsKey("friendship")) pk.OriginalTrainerFriendship = (byte)Read("friendship", 0, 255);
+            if (fields.ContainsKey("moves"))
+            {
+                var moves = fields["moves"]!.AsArray();
+                if (moves.Count is < 1 or > 4) throw new ArgumentException("Use between one and four move slots.");
+                var ids = moves.Select(n => (ushort)Number(n, "move", 0, pk.MaxMoveID)).ToArray();
+                pk.SetMoves(ids);
+                pk.HealPP();
+            }
+            string[] stats = ["hp", "atk", "def", "spa", "spd", "spe"];
+            int[] order = [0, 1, 2, 4, 5, 3];
+            foreach (var group in new[] { "ivs", "effort" })
+            {
+                if (!fields.ContainsKey(group)) continue;
+                var values = fields[group]!.AsObject();
+                var maximum = group == "ivs" ? 31 : pk is IAwakened ? AwakeningUtil.AwakeningMax
+                    : pk is IGanbaru ? GanbaruExtensions.TrueMax : EffortValues.Max252;
+                foreach (var (key, node) in values)
+                {
+                    var index = Array.IndexOf(stats, key);
+                    if (index < 0) throw new ArgumentException($"Unknown stat {key}.");
+                    var value = Number(node, key, 0, maximum);
+                    if (group == "ivs")
+                        pk.SetIV(order[index], value);
+                    else if (pk is IAwakened av) av.SetAV(order[index], (byte)value);
+                    else if (pk is IGanbaru gv)
+                    {
+                        var bias = GanbaruExtensions.GetBias(pk.GetIV(order[index]));
+                        if (value < bias) throw new ArgumentException($"{key} effort cannot be below its IV bias {bias}.");
+                        gv.SetGV(order[index], (byte)(value - bias));
+                    }
+                    else pk.SetEV(order[index], value);
+                }
+            }
+            if (fields.ContainsKey("alpha"))
+            {
+                if (pk is not IAlpha alpha) throw new ArgumentException("Alpha is unavailable in this game.");
+                alpha.IsAlpha = fields["alpha"]!.GetValue<bool>();
+            }
+            if (fields.ContainsKey("gigantamax"))
+            {
+                if (pk is not IGigantamax giant) throw new ArgumentException("Gigantamax is unavailable in this game.");
+                giant.CanGigantamax = fields["gigantamax"]!.GetValue<bool>();
+            }
+            if (fields.ContainsKey("dynamax_level"))
+            {
+                if (pk is not IDynamaxLevel dynamax) throw new ArgumentException("Dynamax is unavailable in this game.");
+                dynamax.DynamaxLevel = (byte)Read("dynamax_level", 0, 10);
+            }
+            if (fields.ContainsKey("tera"))
+            {
+                if (pk is not ITeraType tera) throw new ArgumentException("Tera types are unavailable in this game.");
+                TeraTypeUtil.SetTeraType(tera, (MoveType)Read("tera", 0, TeraTypeUtil.MaxType));
+            }
+            pk.ResetPartyStats();
+            pk.RefreshChecksum();
+            var result = Describe(game, pk, new LegalityAnalysis(pk));
+            var battle = Battle(pk);
+            JsonObject StatValues(string group) => new(stats.Select((name, i) =>
+                KeyValuePair.Create(name, (JsonNode?)battle[group]![i]!.DeepClone())));
+            var editable = new JsonObject
+            {
+                ["species"] = pk.Species, ["form"] = pk.Form,
+                ["nickname"] = pk.IsNicknamed ? pk.Nickname : "", ["level"] = pk.CurrentLevel,
+                ["shiny"] = pk.IsShiny, ["nature"] = (int)pk.StatAlignment, ["ability"] = pk.Ability,
+                ["gender"] = pk.Gender, ["held_item"] = pk.HeldItem, ["ball"] = pk.Ball,
+                ["friendship"] = pk.OriginalTrainerFriendship,
+                ["moves"] = new JsonArray(pk.Moves.Select(m => (JsonNode?)(int)m).ToArray()),
+                ["ivs"] = StatValues("ivs"), ["effort"] = StatValues("effort"),
+            };
+            if (pk is IAlphaReadOnly a) editable["alpha"] = a.IsAlpha;
+            if (pk is IGigantamax g) editable["gigantamax"] = g.CanGigantamax;
+            if (pk is IDynamaxLevel d) editable["dynamax_level"] = d.DynamaxLevel;
+            if (pk is ITeraType t) editable["tera"] = (int)t.TeraTypeOverride <= TeraTypeUtil.MaxType
+                ? (int)t.TeraTypeOverride : (int)t.TeraTypeOriginal;
+            result["editable"] = editable;
+            result["identity"] = new JsonObject
+            {
+                ["ot"] = pk.OriginalTrainerName, ["tid"] = pk.TID16, ["sid"] = pk.SID16,
+                ["pid"] = pk.PID, ["encryption_constant"] = pk.EncryptionConstant,
+                ["version"] = (int)pk.Version, ["met_location"] = pk.MetLocation, ["met_level"] = pk.MetLevel,
+                ["tracker"] = (pk is IHomeTrack home ? home.Tracker : 0).ToString(),
+            };
+            return result;
+        }
+
+        static void SetReceivedPid(PKM pk, Nature nature, byte gender, bool shiny)
+        {
+            if (pk.Nature == nature && pk.Gender == gender && pk.IsShiny == shiny) return;
+            // Gen III stores these properties in PID. Try deterministic candidates,
+            // preserving the original ability parity and all unrelated identity fields.
+            var original = pk.PID;
+            var lowStart = original & 0xFFFF;
+            var highStart = original >> 16;
+            for (uint delta = 0; delta < 65536; delta += 2)
+            {
+                var low = (lowStart + delta) & 0xFFFF;
+                for (uint offset = 0; offset < (shiny ? 8 : 25); offset++)
+                {
+                    var high = shiny ? low ^ pk.TID16 ^ pk.SID16 ^ offset : (highStart + offset) & 0xFFFF;
+                    pk.PID = (high << 16) | low;
+                    if (pk.Nature == nature && pk.Gender == gender && pk.IsShiny == shiny) return;
+                }
+            }
+            pk.PID = original;
+            throw new ArgumentException("These nature, gender and shiny values cannot be represented together.");
         }
 
         JsonObject Check(Game game, byte[] data, JsonObject request)

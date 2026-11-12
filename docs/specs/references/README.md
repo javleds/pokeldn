@@ -36,3 +36,13 @@ El wireframe simula también modalidades futuras. La captura corresponde al modo
 
 - [Básico con EVs/amistad máximos, fixture a 800 × 480](implemented-basic-max-demo-800x480.jpg).
 - [Consulta vacía al recibir foco nativo, fixture 800 × 480](implemented-query-focus-demo-800x480.jpg).
+
+## Modalidades de recepción (fixtures sin radio)
+
+- [Menú de modalidades](implemented-modes-menu-demo-800x480.jpg).
+- [Modificador con editor automático](implemented-modifier-demo-800x480.jpg).
+- [Configuración de EVs](implemented-effort-mode-demo-800x480.jpg).
+- [Validador con tarjeta de estado](implemented-validator-demo-800x480.jpg).
+- [Informe completo en modal](implemented-validator-report-demo-800x480.jpg).
+
+Capturas a 800 × 480; los datos son de demostración y no acreditan intercambio físico.

@@ -210,6 +210,8 @@ class JoinerTradeStage:
         self.open_delay = open_delay
         self.opened = False
         self.done = False
+        self.pending_return = False
+        self.return_messages = []
         self._start()
 
     def _start(self):
@@ -222,11 +224,11 @@ class JoinerTradeStage:
 
     @property
     def offer(self):
-        return self.offers[self.index]
+        return None if self.pending_return else self.offers[self.index]
 
     def offer_first(self):
         """-> the joiner's offer, for a run that puts its Pokemon up before the host does."""
-        if self.offered:
+        if self.offered or self.pending_return:
             return []
         self.offered = True
         return [(0.0, 0, build(KEY_TRADE, KIND_OFFER, 0, self.offer))]
@@ -235,6 +237,11 @@ class JoinerTradeStage:
         """-> [(delay, port, payload), ...] to send in answer to what the host sent."""
         if self.done:
             return []
+        if self.pending_return:
+            if len(self.return_messages) >= 64:
+                raise RuntimeError('Too many game messages while awaiting a controlled return.')
+            self.return_messages.append((port, payload))
+            return self.poll()
         if port == 1:
             if payload == table_update(KEY_TRADE, True) and not self.opened:
                 # The pair's joiner opened the key 206 ms after the host, after all four identity
@@ -251,17 +258,23 @@ class JoinerTradeStage:
                 if self.rounds is not None:
                     self.rounds.done(self.host_offers[-1] if self.host_offers else None)
                     if not self.rounds.finished:
-                        self.offers.append(bytes(self.rounds.current()))
+                        returned = self.rounds.current()
+                        if returned is None:
+                            self.pending_return = True
+                            self._start()
+                        else:
+                            self.offers.append(bytes(returned))
                 if self.index + 1 < len(self.offers):
                     self.index += 1
                     self._start()
-                else:
+                elif not self.pending_return:
                     self.done = True
                 return [(0.0, 1, table_update(KEY_EXCHANGE, False))]
             if payload == table_update(KEY_TRADE, False) and self.opened:
                 self.opened = False
                 return [(self.open_delay, 1, table_update(KEY_TRADE, False))]
             return []
+
         if port != 0:
             return []
         m = parse(payload)
@@ -289,6 +302,20 @@ class JoinerTradeStage:
             self.step_index += 1
             return [(0.0, 0, build(KEY_EXCHANGE, KIND_STEP_OPEN, step))]
         return []
+
+    def poll(self):
+        """Release deferred application messages; transport acks/heartbeat never wait."""
+        if not self.pending_return or self.rounds.current() is None:
+            return []
+        self.offers.append(bytes(self.rounds.current()))
+        self.index += 1
+        self.pending_return = False
+        self._start()
+        queued, self.return_messages = self.return_messages, []
+        out = []
+        for port, payload in queued:
+            out.extend(self.on_message(port, payload))
+        return out
 
 
 def apply_fields(plain, settings):

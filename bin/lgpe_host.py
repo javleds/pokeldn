@@ -480,6 +480,15 @@ class Session:
         return hdr, None
 
     def poll(self):
+        gate = self.partner.gate if isinstance(self.partner, trade_back.TradeBack) else None
+        if gate is not None:
+            participants = list(self.host.participants)
+            if participants:
+                gate.bind((tuple((p[0], p[1], bytes(p[2])) for p in participants),
+                           getattr(self.host, 'join_events', 0)))
+            elif gate.session is not None:
+                gate.close()
+                raise RuntimeError('The native return participant disconnected.')
         for participant in list(self.host.participants):
             index, ip, mac, name = participant
             if self.peer_ip is None:
@@ -489,6 +498,8 @@ class Session:
                       f"mac={bytes(mac).hex()} name={who!r}")
                 self.record(rec="seat", ip=ip, mac=bytes(mac).hex(), name=bytes(name).hex())
         for payload, src_ip in self.host.recv():
+            if gate is not None and self.peer_ip is not None and src_ip != self.peer_ip:
+                raise RuntimeError('Another participant cannot enter a controlled return.')
             if not pia3.is_pia3(payload):
                 continue
             if self.peer_ip is None:
@@ -1152,6 +1163,8 @@ class Session:
                     self.peer_location)["variable_id"]
             except Exception:
                 self.peer_variable_id = 0
+            if isinstance(self.partner, trade_back.TradeBack) and self.partner.gate is not None:
+                self.partner.gate.bind(self.peer_variable_id, key="peer")
             # The console checks the inverse request's connection id against its record of us and
             # drops a zero.
             inverse = station9.build_connection_request(

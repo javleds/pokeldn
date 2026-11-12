@@ -594,7 +594,13 @@ class TradePartner:
             return self.sent
         return self.offers[min(self.trades, len(self.offers) - 1)]
 
+    def _bind_return_peer(self, joiner):
+        gate = getattr(self.remote, "gate", None)
+        if gate is not None and joiner.connected:
+            gate.bind((id(joiner), joiner.variable_id), key="peer")
+
     def game(self, joiner, g, payload, now):
+        self._bind_return_peer(joiner)
         data_id, fields = g["data_id"], g.get("fields") or {}
         body = payload[room.HEADER_SIZE:]
         if data_id == room.REQUEST:
@@ -680,6 +686,7 @@ class TradePartner:
         return []
 
     def tick(self, joiner, now):
+        self._bind_return_peer(joiner)
         out = []
         if self.remote is not None and self.their_security is None and not self.arriving:
             theirs = self.remote.theirs()

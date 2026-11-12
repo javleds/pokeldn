@@ -93,7 +93,7 @@ export PATH="$DOTNET_ROOT:$PATH"
 source .venv/bin/activate
 ```
 
-La versión base compiló PKHeX sin advertencias ni errores. Sus 488 pruebas seleccionadas pasaron (cinco requirieron repetición fuera de las restricciones de sockets). La nueva configuración se verifica con tests portátiles y suites GUI/firmware. No se ha flasheado ni certificado un C6 real con estas vistas, ni se ha probado Pi 5. La galería abre Equipo mediante gui/portable_team_view.py; gui/portable_team.py mantiene borradores, validación por revisión y sesiones locales. El banco portátil y las otras modalidades siguen pendientes. Equipo reutiliza PKHeX y runner; no se ha certificado el intercambio físico.
+La versión base compiló PKHeX sin advertencias ni errores. Sus 488 pruebas seleccionadas pasaron (cinco requirieron repetición fuera de las restricciones de sockets). La nueva configuración se verifica con tests portátiles y suites GUI/firmware. No se ha flasheado ni certificado un C6 real con estas vistas, ni se ha probado Pi 5. La galería abre Equipo mediante gui/portable_team_view.py; gui/portable_team.py mantiene borradores, validación por revisión y sesiones locales. El banco portátil sigue pendiente; las modalidades de recepción se añadieron después, según spec 010. Equipo reutiliza PKHeX y runner; no se ha certificado el intercambio físico.
 
 ### Fuentes de la vista web portátil
 
@@ -123,3 +123,20 @@ Para repetir la previsualización de esta sesión sin mezclar datos con la confi
 `_watch_received` consulta los archivos de la sesión usando `run_stamp`, lee el primero y obtiene metadatos fuera del loop de UI. Una lectura tardía no debe cruzar sesiones; un fallo de lectura no detiene la devolución nativa. El perfil sigue dependiendo de un evento de entrenador compatible y recepción confirmada, como en el flujo anterior. No certificar identificación para todas las combinaciones de juego/rol sin prueba real.
 
 Validación: 117 pruebas de portátil y trade-back aprobadas (las simulaciones con UDP necesitaron permiso de sockets locales); tras añadir detección del aviso nativo de original no conservado, 53 pruebas de controlador/vista aprobadas. Vista de recepción inspeccionada a 800 × 480 mediante fixture sin radio. Referencia: `docs/specs/references/implemented-trainer-return-demo-800x480.jpg`. Sin intercambio físico ni certificación de recuperación tras interrupción.
+
+
+### Modalidades de recibido y transporte controlado (spec 010)
+
+`gui/portable_received.py` coordina las modalidades y su journal; `gui/portable_received_view.py` reutiliza selectores y editor de Equipo. El helper incluye `edit_received`: edita una copia del registro con allowlist, devuelve snapshot e informe; no usa Make ni cambia entrenador. El original se conserva aparte, porque la serialización de un informe PKHeX no es garantía de bytes idénticos.
+
+`pokeldn/portable_return.py` mantiene un gate no bloqueante por sesión nativa. La UI publica `response.json` con acción/hash y, para copia, `edited.bin` con hash. El transporte vuelve a validar y convertir la copia al formato nativo; únicamente el original en memoria puede omitir legalidad. No acepta rutas arbitrarias. `native.claim` impide reutilizar directorio; los adaptadores ligan la devolución a participante/sesión y abortan si cambia. Una ausencia de ofrecimiento durante edición no debe detener heartbeat ni enviar el original por accidente.
+
+Los modos nuevos usan las mismas herramientas host/join de los seis juegos; activar combinaciones solo según `portable_return.supports`. Sin variables `POKELDN_RETURN_*`, el flujo previo de Equipo/identificación y escritorio conserva sus rutas. Tests de protocolos simulados y resultados se registran en spec 010; pruebas físicas de pausas largas y desconexión siguen pendientes.
+
+La sesión activa puede tener `busy=False` durante edición: no usar ese flag para liberar radio o permitir cambiar modo. `active` y `setup.session_busy` siguen verdaderos hasta salida real. Las respuestas tardías se comprueban contra run_stamp/directorio/revisión. Fallos de journal no deben impedir cancelar ni liberar la radio al salir.
+
+Suite nueva de servicio/controlador/vistas: 362 pruebas aprobadas; inspección visual con fixtures sin radio a 800 × 480. Comando de regresión del transporte (necesita sockets locales para simulación):
+
+```sh
+.venv/bin/python -m pytest tests/test_trade_back*.py tests/test_portable_return.py -q -W error
+```

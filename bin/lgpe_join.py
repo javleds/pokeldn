@@ -349,13 +349,20 @@ def setup_trade_back(args):
     """--trade-back: `args.offers`, prepared, become the queue `answer` schedules rounds from."""
     if getattr(args, "trade_back", False):
         args.queued = list(args.offers)
-        args.rounds = trade_back.Rounds([Path(p).read_bytes() for p in args.queued])
+        args.rounds = trade_back.Rounds.controlled('lgpe', [Path(p).read_bytes() for p in args.queued])
+        args.portable_resume = None
+        args.portable_messages = []
 
 
 def answer(args, state, msg, send):
     """answer_console, with --trade-back's rounds choosing the record the next trade offers. The
     console's last offer is its trade's record, returned byte for byte, never under a fresh PID
     (pokeldn.trade_back)."""
+    if getattr(args, 'portable_resume', None) is not None:
+        if len(args.portable_messages) >= 64:
+            raise RuntimeError('Too many game messages while awaiting a controlled return.')
+        args.portable_messages.append((msg, send))
+        return
     if msg["kind"] == pb7.FIRST_MESSAGE:
         # The console host's save, for the app (pokeldn.console_trainer).
         receiver_gift.hear(None, pb7.first_trainer, msg["body"], game="lgpe")
@@ -366,6 +373,9 @@ def answer(args, state, msg, send):
         if rounds.finished:
             args.offers = args.offers[:r + 1]
             return answer_console(args, state, msg, send)
+        if rounds.current() is None:
+            args.portable_resume = (msg, send)
+            return
         if rounds.returning:
             path = Path(args.queued[0]).with_name(f"lgpe-back-{os.getpid()}-{rounds.round}.pb7")
             path.write_bytes(rounds.current())
@@ -374,6 +384,22 @@ def answer(args, state, msg, send):
             path = args.queued[min(rounds.round // 2, len(args.queued) - 1)]
         args.offers = args.offers[:r + 1] + [path]
     answer_console(args, state, msg, send)
+
+
+def poll_return(args, state):
+    pending = getattr(args, 'portable_resume', None)
+    if pending is None or args.rounds.current() is None:
+        return
+    msg, send = pending
+    args.portable_resume = None
+    r = state.get('round', 0)
+    path = Path(args.queued[0]).with_name(f'lgpe-back-{os.getpid()}-{args.rounds.round}.pb7')
+    path.write_bytes(args.rounds.current())
+    args.offers = args.offers[:r + 1] + [str(path)]
+    answer_console(args, state, msg, send)
+    queued, args.portable_messages = args.portable_messages, []
+    for message, sender in queued:
+        answer(args, state, message, sender)
 
 
 def main(argv=None):
@@ -637,6 +663,7 @@ def _run(args, net, keys, facts, opener):
                 return False
 
             while not seat_over():
+                poll_return(args, state)
                 # Our own leave sends its disconnection request first: that, not the network
                 # leaving, returns a console host's player at once (docs/lgpe_session.md).
                 lv = state.get("leaver")

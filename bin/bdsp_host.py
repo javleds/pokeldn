@@ -219,6 +219,8 @@ def main(argv=None):
             state["joins_seen"] = host.join_events
             _, ip, mac, _ = present[-1]
             print(f"[bh] t={now:7.2f} *** CONSOLE ASSOCIATED *** ip={ip} mac={bytes(mac).hex()}")
+            if isinstance(remote, trade_back.TradeBack) and remote.gate is not None:
+                remote.gate.bind((ip, bytes(mac), state["joins_seen"]))
             out += session.seat(ip, mac, now)
         for payload, src_ip in host.recv():
             out += session.receive(payload, src_ip, now)

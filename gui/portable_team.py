@@ -423,6 +423,9 @@ class Team:
         values['--trade-back'] = self.discovering and self.return_original
         return values
 
+    def _run_env(self, settings):
+        return runner.base_env(settings, self.setup.device)
+
     @property
     def return_pending(self):
         return self.discovering and self.return_original and self.completed == 1
@@ -513,7 +516,7 @@ class Team:
             self.phase = 'running'
             self.log('Iniciando intercambio local. Esperando a la consola.')
             self.process = self.process_factory(['--run', tool.script, *args], str(SESSION),
-                runner.base_env(run_settings, self.setup.device),
+                self._run_env(run_settings),
                 lambda line: loop.call_soon_threadsafe(self._line, line),
                 lambda code: loop.call_soon_threadsafe(self._exited, code),
                 popups=self.popups, label='Intercambios · Equipo')

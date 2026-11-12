@@ -564,9 +564,13 @@ def main(argv=None):
 
     identities = {}             # ip -> the trainer its console's identity names, for a gift made for it
 
+    portable_stage = [None]
+
     def new_stage(ip):
         """One console's trade. A gift made for the receiving player is made for each console's own
         save, so each has its own ReceiverGift."""
+        if portable_stage[0] is not None:
+            return portable_stage[0]
         helper = partner
         if args.trade_back:
             helper = trade_back.TradeBack("sv", trade_offers)
@@ -576,7 +580,10 @@ def main(argv=None):
                                                 notify=receiver_gift.pop_up(f"gift-{ip}"))
             if ip in identities:
                 helper.hear(identities[ip])
-        return trade.TradeStage(trade_offers, confirm_delay=args.confirm_delay, partner=helper)
+        stage = trade.TradeStage(trade_offers, confirm_delay=args.confirm_delay, partner=helper)
+        if isinstance(helper, trade_back.TradeBack) and helper.gate is not None:
+            portable_stage[0] = stage
+        return stage
 
     def hear_identity(ip, payload):
         """Record 1 of a console's identity block names its save (docs/sv.md, The records), for the gift made
@@ -1259,6 +1266,11 @@ def main(argv=None):
                             if j is None:
                                 print(f"[sv] {src_ip}: join request did not parse")
                                 continue
+                            if args.trade_back and os.environ.get("POKELDN_RETURN_DIR"):
+                                if src_ip not in stages:
+                                    stages[src_ip] = new_stage(src_ip)
+                                stages[src_ip].partner.gate.bind(
+                                    (src_ip, j["source_constant_id"], j["source_var"], transport.join_events))
                             if raiding:
                                 # The lowest free seat; once the raid has started, or with three
                                 # consoles seated, the join goes unanswered.

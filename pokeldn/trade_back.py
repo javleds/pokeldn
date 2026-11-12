@@ -11,6 +11,9 @@ own offer is, and our confirm waiting for the console's alone.
 """
 
 import threading
+import os
+import sys
+from pathlib import Path
 
 from pokeldn import panel
 
@@ -31,6 +34,10 @@ def add_arguments(ap):
 def check(ap, args, offer_flag, *flags):
     """--trade-back needs `offer_flag` for its first trade; with a flag that decides the offers some
     other way it is a usage error."""
+    if os.environ.get('POKELDN_RETURN_DIR'):
+        from pokeldn.portable_return import SUPPORTED_SCRIPTS
+        if not getattr(args, 'trade_back', False) or Path(sys.argv[0]).name not in SUPPORTED_SCRIPTS:
+            ap.error('This native adapter does not support a controlled portable return.')
     if not getattr(args, "trade_back", False):
         return
     for flag in flags:
@@ -43,11 +50,17 @@ def check(ap, args, offer_flag, *flags):
 class Rounds:
     """What each trade of one seat offers, `offers` in the launcher's own send format."""
 
-    def __init__(self, offers, log=print):
+    def __init__(self, offers, log=print, gate=None):
         self.offers = [bytes(o) for o in offers]
         self.log = log
         self.round = 0
         self.back = None            # what the console sent in the last queued round
+        self.gate = gate
+
+    @classmethod
+    def controlled(cls, game, offers, log=print):
+        from pokeldn.portable_return import ReturnGate
+        return cls(offers, log=log, gate=ReturnGate.from_environment(game, log))
 
     @property
     def finished(self):
@@ -62,7 +75,7 @@ class Rounds:
     def current(self):
         """-> this round's record; None when nothing is queued and nothing is owed back."""
         if self.returning:
-            return self.back
+            return self.gate.current() if self.gate is not None else self.back
         if not self.offers:
             return None
         return self.offers[min(self.round // 2, len(self.offers) - 1)]
@@ -71,6 +84,8 @@ class Rounds:
         """This round's trade completed with the console sending `received` (None when unknown)."""
         if self.round % 2 == 0:
             self.back = bytes(received) if received is not None else None
+            if self.back is not None and self.gate is not None:
+                self.gate.begin(self.back)
             if self.back is None:
                 self.log("[trade-back] the console's Pokemon was not kept: the next trade offers the queue")
                 self.round += 1
@@ -105,9 +120,11 @@ class TradeBack:
     validate = None
 
     def __init__(self, game, offers, log=print):
+        from pokeldn.portable_return import ReturnGate
         self.game = game
         self.log = log
-        self.rounds = Rounds(offers, log=log)
+        self.gate = ReturnGate.from_environment(game, log)
+        self.rounds = Rounds(offers, log=log, gate=self.gate)
         if not self.rounds.offers:
             raise ValueError("--trade-back needs an offer for the first trade")
         self.lock = threading.Lock()
@@ -118,10 +135,14 @@ class TradeBack:
     def _next(self):
         up = Offer()
         up.offer = self.rounds.current()
+        up.accepted = up.offer is not None
         return up
 
     def theirs(self):
         with self.lock:
+            if self.theirs_now.offer is None:
+                self.theirs_now.offer = self.rounds.current()
+                self.theirs_now.accepted = self.theirs_now.offer is not None
             return self.theirs_now
 
     def offer(self, body):
@@ -153,4 +174,5 @@ class TradeBack:
             self.theirs_now = self._next()
 
     def close(self, reason="closed"):
-        pass
+        if self.gate is not None:
+            self.gate.close()

@@ -367,7 +367,9 @@ async def main_async(args):
               "block_out": 0, "block_acked": None}
 
         accepted = trio.Event()           # station handshake closed; a mesh join waits for it
-        rounds = trade_back.Rounds([]) if args.trade_back else None
+        rounds = trade_back.Rounds.controlled('swsh', []) if args.trade_back else None
+        portable_messages = []
+        portable_seen = set()
         nonce = int.from_bytes(os.urandom(8), "big")
 
         def run_until(extra=0.0):
@@ -465,7 +467,7 @@ async def main_async(args):
             return swsh_trade.open_content(offset)
 
 
-        def reliable_window(protocol, port, body, now):
+        def reliable_window(protocol, port, body, now, *, replay=False):
             """One version-4 reliable window, keyed by (protocol, port).
 
             A rejoined stream resumes mid-sequence: the first message carrying FLAG_IS_INITIALIZED
@@ -506,9 +508,22 @@ async def main_async(args):
                     st["data_acked"] = now
                     print(f"[rx]     *** IT ANSWERED OUR DATA, t={now:.2f} ***")
                 return
+            if rounds is not None and rounds.returning and rounds.current() is None:
+                member = swsh_trade.parse_rpc(got["payload"]) if protocol == reliable5.PROTOCOL else None
+                next_offer = swsh_trade.offered_pokemon(got["payload"]) is not None
+                next_selection = member is not None and member.get('envelope') == swsh_trade.RPC_ENVELOPE_BASE + swsh_trade.SELECTION_OFFSET
+                if portable_messages or next_offer or next_selection:
+                    identity = (protocol, port, got['sequence_id'])
+                    if identity not in portable_seen and got['sequence_id'] not in w['seqs']:
+                        if len(portable_messages) >= 256:
+                            raise RuntimeError('Too many game messages while awaiting a controlled return.')
+                        portable_seen.add(identity)
+                        portable_messages.append((protocol, port, body))
+                    ack_reliable(protocol, port, got, w, now)
+                    return
             # An older resend must not replace the current payload: pingReply (9) arriving after
             # pingSynced (10) stalled the sync.
-            if not (w["seqs"] and got["sequence_id"] <= max(w["seqs"])):
+            if replay or not (w["seqs"] and got["sequence_id"] <= max(w["seqs"])):
                 st["their_payload"] = got["payload"]
                 st["said_by_proto"][protocol] = got["payload"]
                 if protocol == reliable4.BROADCAST_PROTOCOL:
@@ -520,7 +535,7 @@ async def main_async(args):
                         except zlib.error:
                             pass
                     st["raid_rx"].append(data)
-            if protocol == 0x7C and got["sequence_id"] not in w["seqs"]:
+            if protocol == 0x7C and (replay or got["sequence_id"] not in w["seqs"]):
                 data = got["payload"]
                 if got["flags"] & reliable5.FLAG_ZLIB:
                     try:
@@ -838,6 +853,9 @@ async def main_async(args):
                 if args.sync_answers and not swsh_trade.answers_for(got["payload"]):
                     print(f"[rx]     *** NO RULE for {got['payload'].hex()} on {protocol:#04x} "
                           f"- id {swsh_trade.parse(got['payload'])[0] if len(got['payload']) >= 4 else '?'} ***")
+            ack_reliable(protocol, port, got, w, now)
+
+        def ack_reliable(protocol, port, got, w, now):
             if w["through"] is None:
                 w["through"] = got["sequence_id"] - 1
                 print(f"\n[rx] t={now:6.2f} {protocol:#04x}/{port} stream opens at seq "
@@ -862,6 +880,17 @@ async def main_async(args):
             if w["acks"] <= 3 or w["acks"] % 50 == 0:
                 print(f"[tx]     acked {protocol:#04x}/{port} through seq {through} "
                       f"(ack id {through + 1}), {w['acks']} acks on this window")
+
+        async def release_portable_return():
+            while True:
+                await trio.sleep(.1)
+                if portable_messages and rounds.current() is not None:
+                    next_trade()
+                    queued = list(portable_messages)
+                    portable_messages.clear()
+                    portable_seen.clear()
+                    for protocol, port, body in queued:
+                        reliable_window(protocol, port, body, time.monotonic() - t0, replay=True)
 
         async def receiver():
             while True:
@@ -2073,6 +2102,8 @@ async def main_async(args):
 
         async with trio.open_nursery() as nursery:
             nursery.start_soon(receiver)
+            if rounds is not None and rounds.gate is not None:
+                nursery.start_soon(release_portable_return)
             nursery.start_soon(guarded, "joiner", joiner)
             nursery.start_soon(guarded, "data_sender", data_sender)
             nursery.start_soon(guarded, "block_sender", block_sender)

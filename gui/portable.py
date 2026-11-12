@@ -454,6 +454,39 @@ class PortableView:
         self.go('team')
         self.page.run_task(self.team_view.load)
 
+    def open_trade_mode(self, mode, resume=False):
+        if self.setup.session_busy and not resume:
+            return
+        if mode == 'team':
+            self.open_team(self.selected_game)
+            return
+        from gui.portable_received import ReceivedTeam
+        from gui.portable_received_view import ReceivedView
+        from gui.portable_team import shared_team
+        from gui.popups import Dialogs
+        from pokeldn.app.popups import Manager
+        if self.team_view:
+            self.team_view.dispose()
+        if not hasattr(self.setup, 'received_modes'):
+            self.setup.received_modes = {}
+        key = (self.selected_game.key, mode)
+        if resume:
+            controller = self.setup.active_team
+        else:
+            controller = self.setup.received_modes.get(key)
+            if controller is None:
+                controller = ReceivedTeam(self.selected_game.key, self.setup, mode)
+                base = shared_team(self.selected_game.key, self.setup)
+                controller.role, controller.version, controller.code = base.role, base.version, base.code
+                self.setup.received_modes[key] = controller
+        async def call_ui(fn):
+            fn()
+        if not controller.active:
+            controller.popups = Manager(Dialogs(self.page), call=lambda fn: self.page.run_task(call_ui, fn))
+        self.team_view = ReceivedView(self, controller)
+        self.go('team')
+        self.page.run_task(self.team_view.load)
+
     def view_team(self):
         self.header_text.value = 'POKÉDEX · ' + GAME_NAMES[self.selected_game.key].upper()
         self.header_text.size = 16
@@ -493,7 +526,11 @@ class PortableView:
     async def start(self):
         if self.setup.active_team:
             game = next(g for g in PORTABLE_GAMES if g.key == self.setup.active_team.game)
-            self.open_team(game)
+            if getattr(self.setup.active_team, 'mode', None):
+                self.selected_game = game
+                self.open_trade_mode(self.setup.active_team.mode, resume=True)
+            else:
+                self.open_team(game)
             return
         if not self.setup.initialized:
             await self.setup.check()

@@ -92,7 +92,9 @@ class TradeBackSession(joiner.JoinerSession):
 
     def __init__(self, *a, next_offers=(), **kw):
         super().__init__(*a, **kw)
-        self.rounds = trade_back.Rounds([self.offer, *next_offers], log=self.log)
+        self.rounds = trade_back.Rounds.controlled('pla', [self.offer, *next_offers], log=self.log)
+        self.pending_return = False
+        self.return_messages = []
 
     @property
     def queue_done(self):
@@ -103,8 +105,33 @@ class TradeBackSession(joiner.JoinerSession):
         if received is not None and len(received) != pla_pokemon.SIZE_PARTY:
             received = None             # a stored record: the trade box sends only party ones
         self.rounds.done(received)
-        self.next_offers = [self.rounds.current()]
+        returned = self.rounds.current()
+        self.pending_return = returned is None and not self.rounds.finished
+        self.next_offers = [] if self.pending_return else [returned]
         super()._next_round()
+        if self.pending_return:
+            self.offer = None
+
+    def _game_message(self, port, cm):
+        if self.pending_return:
+            if len(self.return_messages) >= 64:
+                raise RuntimeError('Too many game messages while awaiting a controlled return.')
+            self.return_messages.append((port, cm))
+            return []
+        return super()._game_message(port, cm)
+
+    def _advance(self):
+        return [] if self.pending_return else super()._advance()
+
+    def poll(self):
+        out = []
+        if self.pending_return and self.rounds.current() is not None:
+            self.offer = self.rounds.current()
+            self.pending_return = False
+            queued, self.return_messages = self.return_messages, []
+            for port, cm in queued:
+                out.extend(self._game_message(port, cm))
+        return out + super().poll()
 
 
 def make_session(args, keys, our_ip, our_mac, offer, exchange, **kw):

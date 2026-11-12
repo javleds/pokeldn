@@ -434,7 +434,7 @@ def trade_stage(args):
         print(f"[sv] offer {n} of {len(offers)}: {describe_offer(one)}")
     return trade.JoinerTradeStage(offers, confirm_delay=args.confirm_delay,
                                   commit_delay=args.commit_delay,
-                                  rounds=trade_back.Rounds(offers) if args.trade_back else None)
+                                  rounds=trade_back.Rounds.controlled('sv', offers) if args.trade_back else None)
 
 
 def describe_offer(body):
@@ -1205,6 +1205,9 @@ async def run_session(args, keys, host_ip, host_mac, our_ip, our_mac, record):
             print(f"[sv] -> {host_ip}: send-on-open {len(data)}B on "
                   f"0x{proto:02x}:{port} {data.hex()[:48]}")
         pending_open = [e for e in pending_open if e[0] > now]
+        if stage is not None:
+            for delay, out_port, payload in stage.poll():
+                schedule_trade(delay, out_port, payload)
         for due, out_port, payload in [e for e in pending_trade if e[0] <= now]:
             seq = send_channel(out_port, payload, "trade")
             print(f"[sv] -> {host_ip}: trade {payload[:4].hex()} on 0x7c port {out_port}, "
@@ -1493,7 +1496,7 @@ async def run_session(args, keys, host_ip, host_mac, our_ip, our_mac, record):
                             record(rec="trade_done", n=traded, t=time.time())
                             if stage.done:
                                 print(f"[sv] TRADE {traded} COMPLETE; no record left to offer")
-                            else:
+                            elif stage.offer is not None:
                                 screen.offer("sv", stage.offer)
                                 print(f"[sv] TRADE {traded} COMPLETE; offering "
                                       f"{describe_offer(stage.offer)} next")
