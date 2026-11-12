@@ -10,6 +10,7 @@ Esta carpeta conserva los acuerdos del usuario para evitar redescubrir o desviar
 ## Orden de lectura
 
 - [Decisiones](decisions.md): hardware, alcance, experiencia de usuario y pendientes.
+- [Contratos de UI](ui-contracts.md): comportamientos acordados y regresiones que los cambios posteriores deben preservar.
 - [Desarrollo](development.md): componentes reales, comandos y criterios de validación.
 - [Punto de pausa de la sesión](session-2026-11-12.md): avances, verificaciones y pendientes inmediatos.
 - [Opciones por caja](../specs/006-portable-slot-options.md): reutilización de selectores, cachés y límites del filtro.

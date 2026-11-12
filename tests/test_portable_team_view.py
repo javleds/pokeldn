@@ -185,7 +185,8 @@ def test_focus_clears_query_without_changing_committed_option():
     dropdown.text = 'Automático'
     dropdown.on_focus(SimpleNamespace(control=dropdown))
     assert dropdown.text == ''
-    assert dropdown.value == dropdown.data == ''
+    assert dropdown.value is None
+    assert dropdown.data == ''
     dropdown.text = 'bur'
     dropdown.on_blur(SimpleNamespace(control=dropdown))
     assert dropdown.text == 'Automático'
@@ -300,3 +301,52 @@ def test_discovery_received_view_keeps_actions_and_hides_editor():
     ui.refresh(update=False)
     assert 'Devolución pendiente' in ui.status.value
     assert ui.session.visible and not ui.cancel.visible
+
+
+def test_basic_max_checkboxes_apply_only_to_selected_slot_and_reset_to_auto():
+    ui = view()
+    ui.model.slots[:2] = [{'species': 7, 'options': {}}, {'species': 25, 'options': {}}]
+    ui.model.metadata[1] = {'base': [35, 55, 40, 50, 50, 90], 'effort': {'max': 252, 'total': 510}}
+    ui.selected = 1
+    ui._toggle_max('effort', True)
+    index, key, values = ui.model.edit.call_args.args
+    assert (index, key) == (1, 'effort')
+    assert sum(values.values()) == 510
+    assert values['spe'] == values['atk'] == 252
+    ui._toggle_max('friendship', True)
+    ui.model.edit.assert_called_with(1, 'friendship', 255, option=True)
+    ui._toggle_max('effort', False)
+    ui.model.edit.assert_called_with(1, 'effort', None, option=True)
+    ui._toggle_max('friendship', False)
+    ui.model.edit.assert_called_with(1, 'friendship', None, option=True)
+
+
+def test_max_checkboxes_follow_each_box_and_lock_during_trade():
+    ui = view()
+    ui.model.slots[:2] = [{'species': 7, 'options': {'friendship': 255}}, {'species': 25, 'options': {}}]
+    ui.refresh(update=False)
+    assert ui.max_checks['friendship'].value
+    assert ui.max_checks['friendship'].visible
+    assert ui.max_checks['effort'].disabled  # metadata pending
+    ui.selected = 1
+    ui.refresh(update=False)
+    assert not ui.max_checks['friendship'].value
+    ui.model.busy = True
+    ui.refresh(update=False)
+    assert all(c.disabled for c in ui.max_checks.values())
+    ui._toggle_max('friendship', False)
+    ui.model.edit.assert_not_called()
+
+
+def test_trainer_refresh_does_not_replace_active_query():
+    ui = view()
+    ui.trainer.on_focus(SimpleNamespace(control=ui.trainer))
+    ui.trainer.text = 'search'
+    ui.refresh(update=False)
+    assert ui.trainer.value is None
+    assert ui.trainer.data == 'base'
+    assert ui.trainer.text == 'search'
+    ui.trainer.on_blur(SimpleNamespace(control=ui.trainer))
+    assert ui.trainer.value == 'base'
+    assert ui.trainer.text == 'Base de pokeLDN'
+    ui.model.set_trainer.assert_not_called()

@@ -6,6 +6,11 @@
 2. [Decisiones de producto y hardware](docs/ai/decisions.md).
 3. [Arquitectura y validación](docs/ai/development.md).
 4. [Plan inicial](docs/specs/001-portable-interface.md) para cambios del modo portátil.
+5. [Contratos de UI que deben preservarse](docs/ai/ui-contracts.md) antes de modificar formularios, selectores, navegación o sesiones.
+
+## Disciplina contra regresiones
+
+Cada decisión funcional nueva o modificada debe registrarse en `docs/ai/decisions.md` y su spec. Antes de cambiar una vista, identificar los contratos existentes que toca y conservarlos salvo petición explícita del usuario. Añadir o actualizar pruebas de comportamiento; para foco, búsqueda y layout, comprobar también el cliente Flet a 800 × 480. Un test de propiedades Python no demuestra el comportamiento del cliente Flutter. Documentar la evidencia y cualquier verificación pendiente; no sustituir decisiones anteriores por la última petición.
 
 ## Dirección del proyecto
 

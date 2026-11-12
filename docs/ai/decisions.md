@@ -82,3 +82,11 @@ Para futuros modos de recepción se autoriza devolver el original intacto aunque
 Se añade «Devolver Pokémon original» al diálogo de identificación; inicialmente activado, puede desactivarse para usar la recepción única anterior. Reutiliza trade-back nativo: oferta inicial legal, recepción y segundo intercambio para devolver bytes intactos. La excepción de original ilegal se aplica aquí sin ampliar permisos de Equipo. La consola puede aplicar evolución por intercambio.
 
 La pantalla muestra etapas, sprite/datos recibidos, entrenador identificado, logs y cancelación. Solo una segunda confirmación permite marcar el original devuelto. El perfil del primer intercambio no se reemplaza con el del segundo. Si la sesión se corta tras recibir, se advierte devolución pendiente; los archivos guardados por upstream se conservan, pero no existe reanudación automática ni reenvío genérico. Véase spec 007.
+
+### Máximos en el formulario básico
+
+Por petición del usuario, EVs máximos y amistad máxima están disponibles por Pokémon como checkboxes compactos en la fila de pestañas existente, sin nueva fila ni scroll. Activar reutiliza el reparto upstream según estadísticas base y límites del juego; no maximiza IVs. Desactivar devuelve esa opción a Automático (no recupera el valor previo). El estado se deriva de los valores guardados de cada caja, no es una regla persistente para futuras especies. Se bloquean durante sesiones; EVs espera metadatos. Ver spec 008.
+
+### Preservación de decisiones y búsqueda (spec 009)
+
+El usuario pide documentar cada decisión para evitar regresiones al incorporar nuevas instrucciones. AGENTS exige leer los contratos de UI y registrar acuerdos/pruebas. Se reafirma que el foco vacía la consulta sin alterar la elección del modelo. En Flet 1.0.5 se debe limpiar también el valor temporal del widget, conservando la elección en data/modelo; asignar text solamente no basta. Las comprobaciones Python deben complementarse con el cliente real.

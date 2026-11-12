@@ -33,3 +33,6 @@ Estas capturas corresponden a la primera implementación Flet. La demo simula ú
 - [Identificación y devolución: recibido simulado a 800 × 480](implemented-trainer-return-demo-800x480.jpg). Fixture visual sin radio; no demuestra intercambio físico.
 
 El wireframe simula también modalidades futuras. La captura corresponde al modo Equipo funcional con generación/validación local; no acredita un intercambio físico.
+
+- [Básico con EVs/amistad máximos, fixture a 800 × 480](implemented-basic-max-demo-800x480.jpg).
+- [Consulta vacía al recibir foco nativo, fixture 800 × 480](implemented-query-focus-demo-800x480.jpg).

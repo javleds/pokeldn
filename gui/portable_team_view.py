@@ -76,6 +76,13 @@ class TeamView:
                                    style=ft.ButtonStyle(padding=ft.Padding(10, 2, 10, 2)))
             self.tab_buttons.append(button)
         self.editor = ft.Container(expand=True)
+        self.max_checks = {}
+        for group, title in (("effort", "EVs máx."), ("friendship", "Amistad máx.")):
+            self.max_checks[group] = ft.Checkbox(label=title, value=False, height=30,
+                label_style=ft.TextStyle(size=12, color=INK),
+                visual_density=ft.VisualDensity.COMPACT,
+                tooltip="Aplicar máximos a esta caja. Desmarcar vuelve a Automático.",
+                on_change=lambda e, group=group: self._toggle_max(group, e.control.value))
         self.session_title = text("Intercambios · Equipo", 16, weight=ft.FontWeight.W_700)
         self.session = ft.Column([], spacing=10, expand=True, visible=False, scroll=ft.ScrollMode.AUTO)
         self.status = text("Cargando datos Pokémon…", 12, max_lines=2)
@@ -86,7 +93,7 @@ class TeamView:
                     ft.Container(expand=True), self.loader, self.cancel, self.logs, self.clear_all],
                    height=59, spacing=8, vertical_alignment=ft.CrossAxisAlignment.END),
             self.slot_row,
-            ft.Row([*self.tab_buttons, ft.Container(expand=True), self.clear_one], height=30, spacing=3),
+            ft.Row([*self.tab_buttons, ft.Container(expand=True), *self.max_checks.values(), self.clear_one], height=30, spacing=3),
             self.editor, self.session, self.status,
         ], spacing=7, expand=True)
         self.model.listeners.add(self._notified)
@@ -107,9 +114,11 @@ class TeamView:
                 return
             selected_value = e.control.value
             e.control.data = selected_value
+            e.control.portable_searching = False
             callback(e)
 
         def restore_selection(e):
+            e.control.portable_searching = False
             # Search text is a query, never a new free-form option.
             e.control.value = e.control.data
             e.control.text = next((option.text for option in e.control.options
@@ -118,10 +127,12 @@ class TeamView:
                 e.control.update()
 
         def begin_search(e):
-            if e.control.disabled or self.model.busy:
+            if e.control.disabled or self.model.busy or e.control.portable_searching:
                 return
-            # Clear only the query; the committed option stays in value/data until
-            # an explicit selection (or the clear button) changes it.
+            # Flet 1.0.5 ignores backend-only text changes in its controller.
+            # Clear the widget value too; data/model retain the committed option.
+            e.control.portable_searching = True
+            e.control.value = None
             e.control.text = ""
             if e.control.parent is not None:
                 e.control.update()
@@ -133,6 +144,7 @@ class TeamView:
             if control.disabled or self.model.busy:
                 return
             control.value = control.data = clear_value
+            control.portable_searching = False
             control.text = next((option.text for option in control.options
                                  if option.key == clear_value), "")
             callback(SimpleNamespace(control=control))
@@ -153,6 +165,7 @@ class TeamView:
         control.menu_height = 160
         control.menu_width = 280
         control.data = selected_value
+        control.portable_searching = False
         control.expand = False
         # A finite preferred width fills each constrained form column without
         # propagating an infinite minimum width to Flutter's menu overlay.
@@ -238,7 +251,8 @@ class TeamView:
         if profile_choices != self.last_profiles:
             self.trainer.options = [ft.DropdownOption(key=key, text=name) for key, name in profile_choices]
             self.last_profiles = profile_choices
-        self.trainer.value = m.selected_trainer
+        if not self.trainer.portable_searching:
+            self.trainer.value = m.selected_trainer
         self.trainer.data = m.selected_trainer
         self.connection.content = f"{'Anfitrión' if m.role == 'host' else 'Unirse'} · Configurar"
         for control in [self.back, self.connection, self.trainer, self.trainer_info, self.find,
@@ -260,6 +274,15 @@ class TeamView:
         self.clear_all.visible = not m.busy
         self.clear_one.visible = not m.busy
         discovery = bool(getattr(m, 'discovering', False))
+        draft = m.slots[self.selected]
+        for group, checkbox in self.max_checks.items():
+            maximum = self._maximum(group)
+            checkbox.visible = self.tab == 'basic' and draft is not None and not discovery
+            checkbox.disabled = m.busy or maximum is None or not (draft or {}).get('species')
+            chosen = (draft or {}).get('options', {}).get(group)
+            checkbox.value = (chosen == maximum if group == 'effort' else str(chosen) == str(maximum)) and maximum is not None
+        kind = m.metadata.get(self.selected, {}).get('effort', {}).get('kind')
+        self.max_checks['effort'].label = {'avs': 'AVs máx.', 'gvs': 'Esfuerzo máx.'}.get(kind, 'EVs máx.')
         self.session_title.value = 'Identificar entrenador' if discovery else 'Intercambios · Equipo'
         self.editor.visible = not m.busy and not discovery
         self.slot_row.visible = not discovery
@@ -601,21 +624,36 @@ class TeamView:
         self._draw_editor()
         self.refresh()
 
+    def _maximum(self, group):
+        if group == "friendship":
+            return 255
+        found = self.model.metadata.get(self.selected)
+        if not found or not found.get('effort') or not found.get('base'):
+            return None
+        effort = found["effort"]
+        remaining = effort.get("total") or effort["max"] * 6
+        value = {}
+        for index in sorted(range(6), key=lambda i: -found["base"][i]):
+            value[STATS[index][0]] = give = min(effort["max"], remaining)
+            remaining -= give
+        return value
+
+    def _toggle_max(self, group, enabled):
+        if self.model.busy or self.model.slots[self.selected] is None:
+            return
+        if enabled:
+            self._max(group)
+            return
+        self.model.edit(self.selected, group, None, option=True)
+        self.refresh()
+        self.page.run_task(self._commit, self.selected)
+
     def _max(self, group):
         if self.model.busy:
             return
-        if group == "friendship":
-            value = 255
-        else:
-            found = self.model.metadata.get(self.selected)
-            if not found:
-                return
-            effort = found["effort"]
-            remaining = effort.get("total") or effort["max"] * 6
-            value = {}
-            for index in sorted(range(6), key=lambda i: -found["base"][i]):
-                value[STATS[index][0]] = give = min(effort["max"], remaining)
-                remaining -= give
+        value = self._maximum(group)
+        if value is None:
+            return
         self.model.edit(self.selected, group, value, option=True)
         self._draw_editor()
         self.refresh()
