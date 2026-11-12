@@ -49,6 +49,8 @@ class Setup:
         self.chip = ""
         self.serial_number = None
         self.busy = False
+        self.session_busy = False
+        self.active_team = None
         self.checking = False
         self.phase = "idle"
         self.error = ""
@@ -87,7 +89,7 @@ class Setup:
         self.settings = current
 
     async def check(self):
-        if self.busy or self.checking:
+        if self.busy or self.checking or self.session_busy:
             return
         self.checking = True
         self.notify()
@@ -158,7 +160,7 @@ class Setup:
             self._save(radio_port=self.device)
 
     async def import_keys(self, data: bytes):
-        if self.busy or self.checking:
+        if self.busy or self.checking or self.session_busy:
             return
         if self.demo:
             self.keys_error = ""
@@ -190,7 +192,7 @@ class Setup:
 
     async def install(self, *, reinstall: bool = False):
         allowed = self.radio_state == "flash" or (reinstall and self.radio_state == "ready")
-        if self.busy or self.checking or not allowed or self.chip != "ESP32-C6":
+        if self.busy or self.checking or self.session_busy or not allowed or self.chip != "ESP32-C6":
             return
         self.busy = True
         self.error = ""

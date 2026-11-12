@@ -1,10 +1,12 @@
 """Pokédex onboarding at 800 × 480; desktop navigation stays in main.py."""
 import asyncio
+from dataclasses import fields
 import os
 from pathlib import Path
 
 import flet as ft
 
+from gui import theme
 from gui.portable_setup import MAX_KEYS, Setup, shared_setup
 from pokeldn.app.i18n import t as tr
 from pokeldn.app.catalog import GAMES
@@ -48,9 +50,11 @@ class PortableView:
     def __init__(self, page, setup):
         self.page, self.setup = page, setup
         self.screen = "progress" if setup.busy else "home" if setup.ready else "health"
+        self.startup_pending = not setup.initialized or setup.checking
         self.buttons = []
         self.focus_index = 0
         self.local = False
+        self.team_view = None
         self.selected_game = None
         self.game_list = None
         self.picker = ft.FilePicker()
@@ -94,7 +98,7 @@ class PortableView:
             self.focus_index = self.buttons.index(control)
 
     async def close(self, e):
-        if not self.setup.busy:
+        if not self.setup.busy and not self.setup.session_busy:
             await self.page.window.destroy()
 
     def button(self, key, text, callback, primary=False, disabled=False, icon=None):
@@ -139,21 +143,32 @@ class PortableView:
                             bgcolor="#E4E7E5", border_radius=9, padding=ft.Padding(12, 9, 12, 9))
 
     def go(self, screen):
+        if self.setup.session_busy and screen != 'team':
+            return
         if self.setup.busy and screen not in ("progress", "logs"):
             return
+        self.startup_pending = False
         self.screen, self.focus_index = screen, 0
         self.render()
         self.page.run_task(self.focus)
 
     async def focus(self):
+        if self.screen == 'team':
+            return
         enabled = [b for b in self.buttons if not b.disabled]
         if enabled:
             target = self.buttons[min(self.focus_index, len(self.buttons) - 1)]
             if self.screen == "home" and self.focus_index < len(PORTABLE_GAMES):
                 await self.game_list.scroll_to(offset=self.game_scroll_offset(self.focus_index), duration=150)
+            if self.screen == 'team':
+                return
             await (target if not target.disabled else enabled[0]).focus()
 
     async def key(self, e):
+        if self.screen == 'team':
+            # Native input/dropdown navigation owns arrows; Escape must not dismiss
+            # a confirmation and navigate away in the same event.
+            return
         if e.key == "Escape":
             self.go("progress" if self.screen == "logs" else "board" if self.screen == "reinstall" else "health")
         elif e.key in ("Arrow Up", "Arrow Down", "Arrow Left", "Arrow Right"):
@@ -184,6 +199,14 @@ class PortableView:
             await self.focus()
 
     def changed(self):
+        if self.startup_pending and self.setup.initialized and not self.setup.checking:
+            self.startup_pending = False
+            if self.screen == "health" and self.setup.ready and not self.setup.busy:
+                self.go("home")
+                return
+        if self.screen == 'team' and self.team_view:
+            self.team_view.refresh()
+            return
         if self.setup.busy and self.screen not in ("progress", "logs"):
             self.screen = "progress"
         if self.screen == self.rendered_screen == "logs":
@@ -207,6 +230,7 @@ class PortableView:
 
     def render(self, update=True):
         s = self.setup
+        self.body.padding = ft.Padding(16, 8, 16, 8) if self.screen == 'team' else ft.Padding(24, 16, 24, 12)
         self.buttons = []
         self.step.value = "DEMO" if s.demo else ""
         self.header_text.value = tr("portable.header", "POKÉDEX · INICIO")
@@ -214,8 +238,9 @@ class PortableView:
         if s.demo:
             self.footer.value = "DEMO VISUAL · Sin claves ni hardware reales"
         content = getattr(self, f"view_{self.screen}")()
-        self.settings_button.visible = self.screen in ("home", "ready") and not s.busy
-        self.close_button.disabled = s.busy
+        self.settings_button.visible = self.screen in ("home", "ready", "team") and not s.busy
+        self.close_button.disabled = s.busy or s.session_busy
+        self.settings_button.disabled = s.session_busy
         for control in (self.settings_button, self.close_button):
             if control.visible:
                 self.buttons.append(control)
@@ -408,17 +433,32 @@ class PortableView:
         return min(maximum, max(0, index * 182 - 182))
 
     def select_game(self, game):
-        if game not in PORTABLE_GAMES:
+        if game not in PORTABLE_GAMES or self.setup.session_busy:
             return
+        self.open_team(game)
+
+    def open_team(self, game):
+        from gui.portable_team import shared_team
+        from gui.portable_team_view import TeamView
+        from gui.popups import Dialogs
+        from pokeldn.app.popups import Manager
+        if self.team_view:
+            self.team_view.dispose()
         self.selected_game = game
-        self.focus_index = PORTABLE_GAMES.index(game)
-        for index, tile in enumerate(self.buttons[:len(PORTABLE_GAMES)]):
-            selected = PORTABLE_GAMES[index] == game
-            tile.style.bgcolor = DARK_RED if selected else PAPER
-            tile.content.controls[1].content.color = "#FFFFFF" if selected else INK
-            tile.style.side[ft.ControlState.DEFAULT] = ft.BorderSide(
-                2, DARK_RED if selected else PAPER)
-        self.page.update()
+        controller = shared_team(game.key, self.setup)
+        async def call_ui(fn):
+            fn()
+        if not controller.busy:
+            controller.popups = Manager(Dialogs(self.page), call=lambda fn: self.page.run_task(call_ui, fn))
+        self.team_view = TeamView(self, controller)
+        self.go('team')
+        self.page.run_task(self.team_view.load)
+
+    def view_team(self):
+        self.header_text.value = 'POKÉDEX · ' + GAME_NAMES[self.selected_game.key].upper()
+        self.header_text.size = 16
+        self.footer.value = 'Tab / Shift+Tab Navegar · Enter Elegir · Guardado automático'
+        return self.team_view.control
 
     def view_home(self):
         self.header_text.value = "POKÉDEX · JUEGOS"
@@ -451,8 +491,14 @@ class PortableView:
                           self.game_list], spacing=12, expand=True)
 
     async def start(self):
+        if self.setup.active_team:
+            game = next(g for g in PORTABLE_GAMES if g.key == self.setup.active_team.game)
+            self.open_team(game)
+            return
         if not self.setup.initialized:
             await self.setup.check()
+        if not self.setup.checking:
+            self.startup_pending = False
         if self.setup.ready and not self.setup.busy:
             self.go("home")
         await self.focus()
@@ -463,7 +509,13 @@ async def main(page: ft.Page):
     page.padding = 0
     page.bgcolor = RED
     page.theme_mode = ft.ThemeMode.LIGHT
-    page.theme = ft.Theme(color_scheme_seed=RED, font_family="Arial")
+    page.fonts = {**(page.fonts or {}), **theme.FONT_ASSETS}
+    page.theme = ft.Theme(color_scheme_seed=RED, font_family="Arial",
+                         text_theme=ft.TextTheme(**{
+                             field.name: ft.TextStyle(font_family_fallback=theme.FALLBACK_FONTS)
+                             for field in fields(ft.TextTheme)}),
+                         icon_button_theme=ft.IconButtonTheme(style=ft.ButtonStyle(
+                             visual_density=ft.VisualDensity.COMPACT, padding=0)))
     page.window.width, page.window.height = 800, 480
     page.window.min_width, page.window.min_height = 640, 400
     page.window.prevent_close = True
@@ -473,6 +525,8 @@ async def main(page: ft.Page):
     page.on_keyboard_event = view.key
     async def window_event(e):
         if e.type == ft.WindowEventType.CLOSE:
+            if setup.session_busy:
+                return
             if setup.busy:
                 view.go("progress")
             else:

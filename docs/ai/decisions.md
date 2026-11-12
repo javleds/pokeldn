@@ -58,4 +58,21 @@ El mecanismo `POKELDN_PORTABLE=1` activa el asistente portátil implementado. `P
 
 El arranque portátil entra directamente a la Pokédex cuando todas las comprobaciones están listas, también al abrir una nueva sesión web. La configuración permanece accesible desde el engranaje; si hay requisitos pendientes se muestra el diagnóstico, y una instalación en curso conserva su vista de progreso.
 
-El inicio muestra una galería de una sola fila con scroll horizontal, avatares circulares y nombres debajo. Se reutilizan los grupos del catálogo estable desde Rojo Fuego/Verde Hoja hasta Escarlata/Púrpura; imágenes locales con Poké Ball de respaldo. La selección permanece en memoria durante la sesión y aún no abre herramientas.
+El inicio muestra una galería de una sola fila con scroll horizontal, avatares circulares y nombres debajo. Se reutilizan los grupos del catálogo estable desde Rojo Fuego/Verde Hoja hasta Escarlata/Púrpura; imágenes locales con Poké Ball de respaldo. La selección abre Intercambios / Equipo.
+
+## Intercambios portátiles
+
+El diseño aprobado y las modalidades futuras se conservan en [spec 005](../specs/005-portable-trades.md), junto con el wireframe interactivo. Equipo es el primer modo implementado: seis cajas, autoguardado, build y validación al confirmar cambios, primer error visible, envío bloqueado hasta tener todas las ofertas legales actuales. Perfil base intacto y perfiles adicionales por juego. Solo conexión local; anfitrión/unirse según catálogo. Durante sesión se bloquea edición, se muestran progreso confirmado, logs y cancelación con confirmación.
+
+Para futuros modos de recepción se autoriza devolver el original intacto aunque sea ilegal; la excepción nunca permite enviar una copia editada ilegal ni ofertas ilegales de Equipo. Validador usará tarjeta de estado y modal de informe, sin scroll principal. Modificador abrirá el editor automáticamente al recibir, manteniendo acciones arriba.
+
+### Editor y selectores de Equipo
+
+- El mensaje de legalidad corresponde a la caja seleccionada: primer error de esa caja o estado válido. Los errores de otras cajas no sustituyen ese mensaje, pero sí bloquean el envío del equipo completo.
+- Entrenador es un selector buscable con «Base de pokeLDN» como opción válida inicial. Especie y movimientos también permiten búsqueda y limpieza mediante X.
+- La búsqueda es temporal: escribir o cerrar el menú no confirma otro valor. Solo seleccionar una opción o usar X cambia la selección. Limpiar entrenador restaura el perfil base; movimientos vuelven a Automático.
+- Apodo permanece en Básico, vacío por defecto; límite de 10 caracteres para Gen III y 12 para los juegos Switch soportados. Variocolor permanece como switch.
+- Cambiar caja reutiliza los controles y opciones ya calculadas. Solo los cambios de configuración pertinentes recalculan opciones; salir de un campo sin editar no vuelve a generar.
+- Los candidatos de movimientos se filtran por configuración de caja. El filtro no garantiza legalidad conjunta ni exhaustividad de orígenes posibles: PKHeX sigue validando el resultado final. Conservar visibles los valores elegidos que queden fuera del filtro; no borrarlos automáticamente.
+- Los desplegables deben dejar visible el campo de búsqueda y poder cerrarse sin elegir. El límite actual es 280 × 160 dentro de la pantalla 800 × 480.
+- El salto automático al menú de juegos se aplica al arranque, incluso si otra sesión completa los checks. Abrir Ajustes manualmente no debe provocar un salto de vuelta por una notificación de estado.

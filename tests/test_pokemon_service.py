@@ -1103,3 +1103,12 @@ def test_an_emulated_guests_catch_of_a_hosted_boss_keeps_the_roll_and_passes_pkh
     assert (got["ot_name"], got["trainer_id"], got["secret_id"]) == ("Guest", 1234, 5678)
     checked = service.check_bytes("swsh", caught)
     assert checked["legal"] and checked["shiny"] == (pid_high is not None)
+
+
+def test_move_candidates_follow_species_and_level(service):
+    low = service.move_options('frlg', 7, TRAINER, 5, version='FR')
+    high = service.move_options('frlg', 7, TRAINER, 10, version='FR')
+    charmander = service.move_options('frlg', 4, TRAINER, 10, version='FR')
+    assert 145 not in low and 145 in high  # Bubble by level, not a TM.
+    assert 53 not in high and 53 in charmander  # Flamethrower TM.
+    assert 145 not in charmander

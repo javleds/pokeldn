@@ -149,3 +149,29 @@ def test_gallery_navigation_keeps_focus_visible_and_reaches_settings(view, monke
     assert view.buttons[view.focus_index] is view.settings_button
     asyncio.run(view.key(SimpleNamespace(key='Arrow Down')))
     assert view.focus_index == 0
+
+
+@pytest.mark.parametrize('ready', [True, False])
+def test_start_waits_for_checks_owned_by_another_session(view, monkeypatch, ready):
+    view.setup.checking = True
+    monkeypatch.setattr(view, 'focus', AsyncMock())
+    asyncio.run(view.start())
+    assert view.screen == 'health'
+    view.setup.engine_ready = ready
+    view.setup.keys_error = ''
+    view.setup.radio_state = 'ready'
+    view.setup.checking = False
+    view.setup.initialized = True
+    view.changed()
+    assert view.screen == ('home' if ready else 'health')
+    assert not view.startup_pending
+
+
+def test_manual_settings_stay_open_after_successful_checks(view):
+    view.setup.engine_ready = True
+    view.setup.keys_error = ''
+    view.setup.radio_state = 'ready'
+    view.setup.initialized = True
+    view.go('health')
+    view.changed()
+    assert view.screen == 'health'

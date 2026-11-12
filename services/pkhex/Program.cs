@@ -70,6 +70,7 @@ static partial class Program
                     "species" => Species(game),
                     "names" => Names(game, (string)request["list"]!),
                     "options" => Options(game, request),
+                    "move_options" => MoveOptions(game, request),
                     "encounters" => EncounterList(game, request),
                     "gender_ratio" => GenderRatio(game, request),
                     "make" => Make(game, request),
@@ -283,6 +284,26 @@ static partial class Program
         }
 
         // What the offer options can ask of this species in this game; the GUI shows only what is listed.
+        JsonObject MoveOptions(Game game, JsonObject request)
+        {
+            // A reference encounter gives candidates, not a proof that arbitrary
+            // combinations are legal. Make/Check remain authoritative for the offer.
+            var baseline = request.DeepClone().AsObject();
+            if (baseline["options"] is JsonObject options)
+                options.Remove("moves");
+            var made = Make(game, baseline);
+            var pk = Parse(game, Convert.FromBase64String((string)made["data"]!));
+            var analysis = new LegalityAnalysis(pk);
+            var possible = LearnPossible.Get(pk, analysis.EncounterMatch,
+                analysis.Info.EvoChainsAllGens, MoveSourceType.All);
+            var dummied = MoveInfo.GetDummiedMovesHashSet(game.Context);
+            var moves = new JsonArray();
+            for (ushort move = 1; move < possible.Length && move <= pk.MaxMoveID; move++)
+                if (possible[move] && !MoveInfo.IsDummiedMove(dummied, move))
+                    moves.Add((int)move);
+            return new JsonObject { ["moves"] = moves };
+        }
+
         JsonObject Options(Game game, JsonObject request)
         {
             var species = checked((ushort)(int)request["species"]!);

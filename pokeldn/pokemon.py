@@ -208,6 +208,13 @@ class Service:
         reply["file"] = self.keep(game, reply)
         return reply
 
+    def move_options(self, game: str, species: int, trainer: dict, level: int,
+                     shiny: bool = False, version: str = "", options: dict | None = None) -> list[int]:
+        """Candidate IDs for a reference encounter; final make/check is still required."""
+        return self._ask({"cmd": "move_options", "game": game, "species": species,
+                          "trainer": trainer, "level": level, "shiny": shiny,
+                          "version": version, "options": options or {}})["moves"]
+
     def raid_boss(self, data: bytes, rank: int, shiny: bool | None = None) -> dict:
         """A Sword/Shield Max Raid boss as a den holds it, for the PK8 in `data` at star rank `rank` (0 to 4):
         data (the encrypted party record, raid.boss_record's `rolled` input), seed, rank (the nearest a den of

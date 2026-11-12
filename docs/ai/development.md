@@ -50,7 +50,7 @@ Selección inicial para cambios que afecten UI y flujos locales, ampliable segú
 python -m pytest tests/test_gui_layout.py tests/test_gui_views.py tests/test_bank.py tests/test_pokemon_service.py -q -W error
 ```
 
-**Estado:** comandos comprobados contra archivos de configuración/documentación, todavía no ejecutados como validación de esta adaptación. Preparar herramientas y dependencias antes de reportar resultados.
+**Estado:** los comandos anteriores describen la ruta general y CI, no certifican que se haya ejecutado toda la suite para cada cambio. Las ejecuciones concretas y sus límites se registran abajo y en el [punto de pausa](session-2026-11-12.md).
 
 ## Criterios por etapa
 
@@ -93,4 +93,25 @@ export PATH="$DOTNET_ROOT:$PATH"
 source .venv/bin/activate
 ```
 
-La versión base compiló PKHeX sin advertencias ni errores. Sus 488 pruebas seleccionadas pasaron (cinco requirieron repetición fuera de las restricciones de sockets). La nueva configuración se verifica con tests portátiles y suites GUI/firmware. No se ha flasheado ni certificado un C6 real con estas vistas, ni se ha probado Pi 5. El inicio portátil posterior es informativo: banco, generación e intercambios con diseño propio no están implementados aún.
+La versión base compiló PKHeX sin advertencias ni errores. Sus 488 pruebas seleccionadas pasaron (cinco requirieron repetición fuera de las restricciones de sockets). La nueva configuración se verifica con tests portátiles y suites GUI/firmware. No se ha flasheado ni certificado un C6 real con estas vistas, ni se ha probado Pi 5. La galería abre Equipo mediante gui/portable_team_view.py; gui/portable_team.py mantiene borradores, validación por revisión y sesiones locales. El banco portátil y las otras modalidades siguen pendientes. Equipo reutiliza PKHeX y runner; no se ha certificado el intercambio físico.
+
+### Fuentes de la vista web portátil
+
+El tema portátil registra FONT_ASSETS y sus fallbacks locales, como escritorio. Con no_cdn=True, Flutter solicita Noto Sans Symbols en assets/fonts/notosanssymbols/v43/….woff2; Flet sirve los assets de aplicación desde la raíz, por lo que ese archivo se distribuye en gui/assets/assets/fonts/notosanssymbols. Incluye licencia OFL y procedencia. No quitar el nivel assets adicional: reproduce la URL del motor. Se comprobó HTTP 200 (69 116 bytes) donde antes respondía 404 y generaba advertencias repetidas. Revisar esta ruta al actualizar Flet/Flutter.
+
+### Caché de opciones de Equipo
+Ver spec 006: catálogos compartidos, metadatos por dependencias y candidatos PKHeX por configuración de caja. El nuevo comando interno move_options requiere recompilar services/pkhex. La vista básica reutiliza controles al cambiar caja; navegar no construye Pokémon. Los filtros orientan según un origen de referencia, sin reemplazar la validación de la combinación ni el check de bytes previo al intercambio.
+
+### Regresiones corregidas y cobertura
+
+`theme.dropdown` elimina `menu_height` para listas iniciales cortas. Los selectores reutilizados se pueblan después: fijar el límite en `TeamView.dropdown` después de invocar ese helper. No usar ancho infinito en el campo: Flutter lo propagaba al menú. Se usa ancho preferido finito de 280, límite de menú 280 × 160 y columnas restringidas por el formulario. Prueba de regresión: `test_dynamically_populated_selector_keeps_bounded_menu`.
+
+`Setup.check()` retorna inmediatamente si otra sesión está comprobando. `PortableView.startup_pending` permite que `changed()` complete la navegación cuando llegan los resultados compartidos; `go()` desactiva esa transición al navegar explícitamente. Pruebas: `test_start_waits_for_checks_owned_by_another_session` (éxito y fallo) y `test_manual_settings_stay_open_after_successful_checks`. La comprobación fallida conserva diagnóstico; no interpretar la petición como omitir requisitos ausentes.
+
+Suite enfocada reproducible, con el SDK local exportado como arriba:
+
+```sh
+.venv/bin/python -m pytest tests/test_pokemon_service.py tests/test_portable_team.py tests/test_portable_team_view.py tests/test_portable_ui.py tests/test_portable_setup.py -q -W error
+```
+
+Para repetir la previsualización de esta sesión sin mezclar datos con la configuración normal, añadir `POKELDN_DATA="$PWD/.local-preview/portable"` al comando web. No borrar ese directorio al retomar ni versionar sus datos. La última corrección de arranque tiene cobertura automatizada; queda pendiente repetir su prueba visual con varias pestañas.
