@@ -149,3 +149,11 @@ Revisión visual del selector de papel: igualar alturas visibles, bordes suaves 
 
 ### Ícono y compilación portátil (2026-11-13)
 Ícono PNG transparente generado con imagegen en gui/assets/portable, separado del upstream. La guía docs/portable-build.md es la referencia de preparación Mac/Pi con C6: compilar PKHeX y ejecutar GUI desde fuente. No confundir setup/preflight/deploy_pi del servidor Wi-Fi/Mystery Gift con requisitos de esta GUI. Empaquetador autónomo portátil e integración de ícono macOS pendientes; no afirmar que exportar POKELDN_PORTABLE al compilar queda incrustado en una app. Compilar por plataforma/arquitectura; nunca copiar venv ni binarios Mac a Pi. Mac build comprobado; Pi y launcher Linux aún no ejecutados en hardware.
+
+### Comando habitual de compilación (spec 017)
+`./scripts/build_portable.sh` detecta SDK .NET 10 existente, configura entorno local y compila PKHeX Release con restauración por defecto. Independiente del cwd; no instala dependencias, no modifica SDK global ni empaqueta una .app. Guía portátil prioriza este comando sobre recordar exports.
+
+### Arranque en un comando (spec 018)
+`./scripts/run_portable.sh` abre modo nativo, limpia entorno web/demo y conserva `.local-preview/portable` como default para este checkout. Respeta POKELDN_DATA personalizado y puerto configurable; siempre loopback. No compila, instala ni detiene otras instancias. Detecta SDK local/instalación Pi y usa venv del fork.
+
+El launcher admite `--build`: reutiliza build_portable.sh y abre únicamente si termina correctamente. Sin argumento mantiene arranque directo; no duplicar lógica del SDK ni continuar tras fallo de compilación.

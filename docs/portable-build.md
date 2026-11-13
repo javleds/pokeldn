@@ -2,6 +2,38 @@
 
 Revisado: 2026-11-13. Objetivo: Pi 5, Raspberry Pi OS **64 bits con escritorio**, Waveshare DSI 800 × 480 y XIAO ESP32-C6 por USB de datos.
 
+## Comando habitual (entorno ya preparado)
+
+Desde la raíz del fork:
+
+```sh
+./scripts/build_portable.sh
+```
+
+Detecta el SDK .NET 10 local o instalado, prepara las variables, entra a la raíz correcta y compila PKHeX. Restaura dependencias automáticamente cuando hace falta. También puede invocarse por su ruta absoluta desde otro directorio. No instala Python/.NET ni crea un paquete autónomo; la preparación inicial de abajo se hace una sola vez por equipo.
+
+En este Mac, desde cualquier terminal:
+
+```sh
+/Users/javleds/dev/javleds/portpoke_inc/pokeldn/scripts/build_portable.sh
+```
+
+`--help` muestra el alcance; `--no-restore` es opcional cuando ya se restauraron dependencias. No necesitas recordar los exports para compilar. Los comandos manuales de abajo se conservan como explicación y diagnóstico.
+
+## Abrir la app (entorno ya preparado)
+
+```sh
+./scripts/run_portable.sh
+```
+
+Para compilar primero y abrir solo si la compilación termina correctamente:
+
+```sh
+./scripts/run_portable.sh --build
+```
+
+No requiere exports ni activar el venv. Abre la GUI nativa, elimina variables web/demo heredadas y usa `.local-preview/portable` del checkout para conservar las pruebas existentes. Respeta `POKELDN_DATA` si ya definiste otra ruta (por ejemplo, la recomendada para instalación Pi). Puerto local 8590 por defecto, configurable con `FLET_SERVER_PORT`. Cerrar la instancia anterior; sin `--build` no compila. No instala dependencias. Se puede invocar por ruta absoluta desde otro directorio.
+
 ## Qué se compila y qué se ejecuta
 
 - **Python/Flet:** la GUI se ejecuta desde el fork completo; no basta copiar `portable*.py`.
@@ -65,6 +97,8 @@ Es una ventana nativa; TCP aquí es transporte **local** entre Python y el clien
 
 ### Este checkout de desarrollo
 
+En este Mac, primero entrar en `/Users/javleds/dev/javleds/portpoke_inc/pokeldn` (el directorio padre no contiene `services/pkhex`). Los `export` siguientes deben ejecutarse en la misma terminal que el build; la configuración de una sesión de Codex no se propaga a otras terminales.
+
 Tiene Python en `.venv` y SDK local en `.tools/dotnet`; no hace falta reinstalarlos:
 
 ```sh
@@ -73,6 +107,8 @@ export PATH="$DOTNET_ROOT:$PATH"
 export DOTNET_CLI_HOME="$PWD/.tools/dotnet-home"
 dotnet build -c Release services/pkhex -warnaserror
 ```
+
+`--no-restore` se usó únicamente para verificar un entorno que ya tenía las dependencias restauradas. Omitirlo en la preparación inicial permite a `dotnet build` descargar las dependencias necesarias. Un SDK global distinto del local puede producir otro resultado; comprobar `command -v dotnet` y `dotnet --version` después de los exports.
 
 Para conservar los perfiles usados durante las pruebas de esta conversación, sustituir la ruta nueva de datos por `export POKELDN_DATA="$PWD/.local-preview/portable"`. Elegir una ruta estable; cambiarla hace que la app parezca recién instalada. No versionar su contenido.
 
