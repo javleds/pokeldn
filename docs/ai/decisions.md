@@ -115,3 +115,6 @@ El comparador prioriza identidad y procedencia sobre estadísticas. Incluye gén
 ### Monitor portátil de recursos (`?`)
 Superposición opcional, fija abajo a la derecha, transparente a clics y sin foco propio. `?` alterna en todas las pantallas portátiles. Muestra RAM usada/total y porcentaje del sistema, RSS sumado de app+descendientes en MiB y porcentaje de RAM, CPU del sistema y de app+descendientes normalizada por CPU lógicas, y temperatura CPU cuando psutil expone sensor compatible. En web no incluye navegador. RSS puede contar memoria compartida varias veces; procesos breves entre muestras pueden no verse. Muestreo cada segundo solo visible/conectado; primera lectura CPU pendiente. No persistir preferencia.
 Bandas orientativas de temperatura: <60 °C fresco, 60–74 templado, >=75 caliente; no son límites certificados de throttling. Sin sensor: N/D. Pi 5 pendiente de validación física. Se añade psutil 7.1.3 como dependencia multiplataforma.
+
+### Área útil en escritorio macOS
+La ventana nativa de Flet incluye ~32 píxeles de barra de título en el alto configurado. Se abre a 800 × 512 (mínimo igual) en macOS para conservar ~800 × 480 útiles, evitando que el estado de Equipo invada los movimientos. Web y Linux conservan su configuración previa; no se reduce el tamaño de los campos ni se agrega scroll al formulario básico.

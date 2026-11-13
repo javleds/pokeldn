@@ -2,6 +2,7 @@
 import asyncio
 from dataclasses import fields
 import os
+import sys
 from pathlib import Path
 
 import flet as ft
@@ -562,6 +563,11 @@ async def main(page: ft.Page):
     page.window.width, page.window.height = 800, 480
     page.window.min_width, page.window.min_height = 640, 400
     page.window.prevent_close = True
+    # The macOS title bar consumes 32 logical pixels inside Flet's reported
+    # window height. Reserve it in addition to the portable 480-pixel canvas.
+    if not page.web and sys.platform == 'darwin':
+        page.window.height = 512
+        page.window.min_width, page.window.min_height = 800, 512
     demo = os.environ.get("POKELDN_PORTABLE_DEMO") == "1"
     setup = Setup(demo=True) if demo else shared_setup()
     view = PortableView(page, setup)
