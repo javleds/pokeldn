@@ -197,6 +197,8 @@ def main(argv=None):
                              "za", *receiving, notify=receiver_gift.pop_up(f"gift-{ip}"))))
         for ip in set(sessions) - seated:
             s = sessions.pop(ip)
+            if s.return_gate is not None:
+                s.return_gate.close()
             print(f"[za-host] the console at {ip} left; {s.console_offers} offer(s), "
                   f"{s.steps} step(s)")
             record(rec="left", ip=ip, t=time.time())

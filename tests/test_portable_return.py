@@ -4,6 +4,7 @@ import hashlib
 import json
 import time
 
+from test_pokemon_service import service
 from pokeldn.portable_return import ReturnGate
 from pokeldn.trade_back import TradeBack
 
@@ -303,3 +304,23 @@ def test_controlled_frlg_host_returns_original_after_protocol_pause(monkeypatch)
     assert child.party[1].raw == theirs[0].raw
     assert gate.original == theirs[0].raw
     assert child.disconnect_seen and not radio.pending
+
+
+def test_za_edited_copy_is_validated_and_reframed_for_native_transport(tmp_path, service):
+    from test_pokemon_service import TRAINER
+    from pokeldn import pokemon
+    original = pokemon.offer_bytes('za', base64.b64decode(service.make('za', 25, TRAINER)['data']))
+    edited = service.edit_received('za', original, {'nickname': 'TEST'})
+    assert edited['legal']
+    gate = ReturnGate(tmp_path, 'za', check=service.check_bytes)
+    try:
+        gate.begin(original)
+        respond(tmp_path, gate, 'edited', base64.b64decode(edited['data']))
+        wait_until(lambda: gate.current() is not None)
+        assert len(gate.current()) == 354
+        result = service.edit_received('za', gate.current())
+        assert result['editable']['nickname'] == 'TEST'
+        assert result['identity'] == service.edit_received('za', original)['identity']
+        assert gate.original == original
+    finally:
+        gate.close()

@@ -28,6 +28,7 @@ GAME_NAMES = {
     "bdsp": "Diamante Brillante / Perla Reluciente",
     "pla": "Leyendas Arceus",
     "sv": "Escarlata / Púrpura",
+    "za": "Leyendas Z-A",
 }
 PORTABLE_GAMES = tuple(game for game in GAMES if game.key in GAME_NAMES)
 
@@ -59,6 +60,7 @@ class PortableView:
         self.team_view = None
         self.selected_game = None
         self.game_list = None
+        self.gallery_navigation = asyncio.Lock()
         self.picker = ft.FilePicker()
         self.error = ""
         self.rendered_screen = ""
@@ -157,6 +159,10 @@ class PortableView:
         self.page.run_task(self.focus)
 
     async def focus(self):
+        async with self.gallery_navigation:
+            await self._focus()
+
+    async def _focus(self):
         if self.screen == 'team':
             return
         enabled = [b for b in self.buttons if not b.disabled]
@@ -439,10 +445,13 @@ class PortableView:
         maximum = max(0, len(PORTABLE_GAMES) * 182 - 12 + 8 - viewport)
         return min(maximum, max(0, index * 182 - 182))
 
-    def select_game(self, game):
-        if game not in PORTABLE_GAMES or self.setup.session_busy:
-            return
-        self.open_team(game)
+    async def select_game(self, game):
+        # Flet 1.0.5 closes the session if a scroll/focus response arrives after
+        # its control was unmounted. Finish gallery calls before replacing it.
+        async with self.gallery_navigation:
+            if self.screen != 'home' or game not in PORTABLE_GAMES or self.setup.session_busy:
+                return
+            self.open_team(game)
 
     def open_team(self, game):
         from gui.portable_team import shared_team
@@ -506,8 +515,13 @@ class PortableView:
         tiles = []
         for index, game in enumerate(PORTABLE_GAMES):
             async def focused(e, index=index):
-                self.focus_index = index
-                await self.game_list.scroll_to(offset=self.game_scroll_offset(index), duration=150)
+                async with self.gallery_navigation:
+                    if self.screen != 'home':
+                        return
+                    self.focus_index = index
+                    await self.game_list.scroll_to(offset=self.game_scroll_offset(index), duration=150)
+            async def selected(e, game=game):
+                await self.select_game(game)
             tile = ft.Button(
                 ft.Column([game_avatar(game), ft.Container(
                     ft.Text(GAME_NAMES[game.key], size=18,
@@ -516,7 +530,7 @@ class PortableView:
                     height=72, alignment=ft.Alignment.TOP_CENTER)],
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=16,
                     alignment=ft.MainAxisAlignment.CENTER),
-                width=170, on_click=lambda e, game=game: self.select_game(game),
+                width=170, on_click=selected,
                 on_focus=focused, tooltip=GAME_NAMES[game.key],
                 style=ft.ButtonStyle(bgcolor=DARK_RED if game == self.selected_game else PAPER, padding=10,
                     side={ft.ControlState.FOCUSED: ft.BorderSide(3, CYAN),
@@ -541,6 +555,8 @@ class PortableView:
             return
         if not self.setup.initialized:
             await self.setup.check()
+        if not self.startup_pending:
+            return
         if not self.setup.checking:
             self.startup_pending = False
         if self.setup.ready and not self.setup.busy:

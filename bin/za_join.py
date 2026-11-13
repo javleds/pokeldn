@@ -122,9 +122,11 @@ class GameStreams:
         paths = args.trade_offer or []
         self.offers = [Path(p).read_bytes() for p in ([paths] if isinstance(paths, str) else paths)]
         self.offer = self.preview = None
+        self.pending_return = False
+        self.return_messages = []
         self.received = None          # the console's pick, the record a trade delivers
         # --trade-back offers the console's pick back as it came (pokeldn/trade_back.py)
-        self.rounds = trade_back.Rounds(self.offers) if getattr(args, "trade_back", False) else None
+        self.rounds = trade_back.Rounds.controlled('za', self.offers) if getattr(args, "trade_back", False) else None
         if self.offers:
             self._load_offer(self.offers[0], renew=getattr(args, "fresh_pid", False))
             screen.offer("za", self.offer)
@@ -185,7 +187,17 @@ class GameStreams:
               + ", ".join(f"{k} {len(v)}B" for k, v in self.ref.items()))
 
     def pump(self, dst_var, src_var, elapsed):
+        if self.rounds and self.rounds.gate:
+            self.rounds.gate.bind((dst_var, src_var), key='streams')
         self.dst_var, self.src_var = dst_var, src_var
+        if self.pending_return and (offer := self.rounds.current()) is not None:
+            self.pending_return = False
+            self._load_offer(offer)
+            screen.offer('za', self.offer)
+            self.scheduled.append((elapsed + za_host.PREVIEW_DELAY, self.preview))
+            queued, self.return_messages = self.return_messages, []
+            for inner in queued:
+                self._answer_trade(inner, elapsed)
         now_ms = int(elapsed * 1000)
         if not self.opened:
             self.opened = True
@@ -244,7 +256,12 @@ class GameStreams:
             # a returned record is the console's bytes: never under a new PID
             renew = (not self.rounds.returning and self.rounds.round // 2 >= len(self.offers)
                      and getattr(self.args, "renew_offer", False))
-            self._load_offer(self.rounds.current(), renew=renew)
+            offer = self.rounds.current()
+            if offer is None:
+                self.pending_return = True
+                self.offer = self.preview = None
+                return
+            self._load_offer(offer, renew=renew)
             screen.offer("za", self.offer)
             self.scheduled.append((elapsed + za_host.PREVIEW_DELAY, self.preview))
         elif self.trades < len(self.offers):
@@ -258,6 +275,11 @@ class GameStreams:
     def _answer_trade(self, inner, elapsed):
         """A console sends a preview each time its cursor moves, so the pick is keyed on the mark.
         docs/za.md."""
+        if self.pending_return:
+            if len(self.return_messages) >= 64:
+                raise RuntimeError('Too many game messages while awaiting a controlled return.')
+            self.return_messages.append(bytes(inner))
+            return
         head = inner[:2].hex()
         if head in (MSG_CANCEL, "0102", "0104"):
             # a cancel moves both stations to the next round; a round-0 confirm is then ignored
@@ -528,6 +550,8 @@ async def run_session(args, keys, host_ip, host_mac, our_ip, our_mac, record):
     game = None
     if args.game:
         game = GameStreams(args, send, send_messages, record)
+        if game.rounds and game.rounds.gate:
+            game.rounds.gate.bind((bytes(host_mac), str(host_ip)), key='host')
 
     conn = None
     if not args.no_answer:
@@ -674,10 +698,14 @@ async def run_session(args, keys, host_ip, host_mac, our_ip, our_mac, record):
                      establishing=False, footer_var=conn.host_var or 0,
                      note=f"session update acknowledgement, sequence {sequence}")
             if game is not None and m.proto in (GAME_RELIABLE, GAME_BROADCAST):
+                if game.rounds and game.rounds.gate:
+                    game.rounds.gate.bind((addr[0], header.src), key='sender')
                 game.on_message(m.proto, m.payload, now - t0)
             conn.on_message(m.proto, m.payload, tick)
         flush(conn, tick)
 
+    if game is not None and game.rounds and game.rounds.gate:
+        game.rounds.gate.close()
     sock.close()
     if counts:
         print("[za] protocol ids the console used: "

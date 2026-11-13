@@ -50,3 +50,5 @@ Capturas a 800 × 480; los datos son de demostración y no acreditan intercambio
 - [Comparación de original y copia](implemented-received-comparison-demo-800x480.jpg): fixture visual DEMO a 800 × 480, cambio exclusivo de nivel; sin intercambio físico.
 
 - [Recursos](implemented-resources-demo-800x480.jpg): demo a 800 × 480 con lecturas reales del Mac anfitrión; temperatura N/D.
+
+- [ZA nativo](implemented-za-native.png): pantalla Equipo de Leyendas Z-A, sin intercambio físico; ventana macOS 800 × 512, área útil ~800 × 480.

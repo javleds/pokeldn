@@ -129,6 +129,13 @@ class Team:
         if self.version not in dict(settings_module.VERSIONS.get(game, ())):
             self.version = self.settings.version(game)
         self.code = saved.get('code', '')
+        if game == 'lgpe':
+            from pokeldn.lgpe.session import code_picks
+            raw = self.code or '000'
+            try:
+                self.code = ''.join(map(str, code_picks(raw.split(',') if ',' in raw else raw)))
+            except ValueError:
+                pass  # Keep an invalid saved value visible for correction.
         self.states = ['pending' if s is not None else 'empty' for s in self.slots]
         self.errors = [''] * 6
         self.results = [{} for _ in range(6)]
@@ -229,6 +236,8 @@ class Team:
             raise ValueError('Ese papel no está disponible para este juego.')
         if version not in (dict(settings_module.VERSIONS.get(self.game, ())) or {self.game: 0}):
             raise ValueError('Versión de juego no válida.')
+        if self.game == 'lgpe' and (len(code) != 3 or any(c not in '0123456789' for c in code)):
+            raise ValueError('El código de Let’s Go debe contener exactamente tres dígitos (0–9).')
         changed = version != self.version
         self.role, self.version, self.code = role, version, code
         if changed:
@@ -418,6 +427,8 @@ class Team:
         for f in tool.fields:
             if f.kind == 'code':
                 values[f.key] = self.code
+            elif f.kind == 'linkcode':
+                values[f.key] = ','.join(self.code)
             if f.key == '--version':
                 values[f.key] = self.version
         values['--fresh-pid'] = False
@@ -494,7 +505,7 @@ class Team:
             if problems := command.problems(tool, values):
                 raise ValueError(str(problems[0]))
             for field in tool.fields:
-                if field.kind == 'code' and (problem := command.code_error(field, values.get(field.key, ''), self.game)):
+                if field.kind in ('code', 'linkcode') and (problem := command.code_error(field, values.get(field.key, ''), self.game)):
                     raise ValueError(problem)
             run_settings = deepcopy(self.setup.settings)
             self._received_folder = run_settings.received
@@ -606,7 +617,8 @@ class Team:
             try:
                 profile = {k: found[k] for k in ('ot', 'tid', 'sid', 'gender', 'language')}
                 if (not profile['ot'] or any(type(profile[k]) is not int or not 0 <= profile[k] <= 65535 for k in ('tid', 'sid'))
-                        or profile['gender'] not in (0, 1) or profile['language'] not in settings_module.TRAINER_LANGUAGES):
+                        or profile['gender'] not in (0, 1)
+                        or profile['language'] not in (settings_module.TRAINER_LANGUAGES | ({11} if self.game == 'za' else set()))):
                     raise ValueError('Datos de entrenador incompletos.')
                 key = hashlib.sha256(json.dumps(profile, sort_keys=True).encode()).hexdigest()[:16]
                 self.profiles[key] = profile

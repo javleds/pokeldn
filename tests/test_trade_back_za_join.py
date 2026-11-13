@@ -1,5 +1,6 @@
 """`bin/za_join.py --trade-back` against a scripted Legends Z-A host (pokeldn/trade_back.py)."""
 import argparse
+import pytest
 
 from pokeldn import za
 from pokeldn.ldn import reliable
@@ -9,7 +10,11 @@ HOST_VAR, JOINER_VAR = 0xEFB0, 0x5AD2
 HEADER = bytes.fromhex("0101b90300bc815801")
 
 
-def test_the_joiner_offers_back_the_record_the_console_traded(tmp_path):
+@pytest.mark.parametrize('controlled', [False, True])
+def test_the_joiner_offers_back_the_record_the_console_traded(tmp_path, monkeypatch, controlled):
+    if controlled:
+        monkeypatch.setenv('POKELDN_RETURN_DIR', str(tmp_path))
+        monkeypatch.setenv('POKELDN_RETURN_GAME', 'za')
     """Trade 1 offers the queued record; trade 2 offers, byte for byte, the record the console picked
     in trade 1, after a cursor that previewed another Pokemon and was not traded."""
     import za_join
@@ -57,6 +62,16 @@ def test_the_joiner_offers_back_the_record_the_console_traded(tmp_path):
     host(theirs(1, 1), 100)                     # the streams open, our preview goes out
     trade(2, 3, 0)
     assert game.trades == 1 and not game.queue_done
+    if controlled:
+        from test_portable_return import respond, wait_until
+        gate = game.rounds.gate
+        assert game.pending_return and game.offer is None
+        for _ in range(250):
+            state['t'] += .02
+            game.pump(HOST_VAR, JOINER_VAR, state['t'])
+        assert len(picks()) == 1 and game.trades == 1
+        respond(tmp_path, gate, 'original')
+        wait_until(lambda: gate.current() is not None)
     trade(4, 5, 0)
     assert game.trades == 2 and game.queue_done
 
@@ -65,3 +80,8 @@ def test_the_joiner_offers_back_the_record_the_console_traded(tmp_path):
     assert first[body] == ours[body]
     assert second[body] == theirs(3, 0)[body]
     assert za.pokemon.parse_offer(second)[1] == za.pokemon.parse_offer(theirs(3, 0))[1]
+
+    if controlled:
+        with pytest.raises(ValueError, match='session ended'):
+            game.pump(HOST_VAR + 1, JOINER_VAR, state['t'] + 1)
+        gate.close()

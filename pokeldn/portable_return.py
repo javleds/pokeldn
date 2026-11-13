@@ -17,14 +17,14 @@ from pokeldn import pokemon
 # Enable a pair only after its adapter has a nonblocking pending-offer path.
 SUPPORTED = frozenset(
     (game, role)
-    for game in ('frlg', 'lgpe', 'swsh', 'bdsp', 'pla', 'sv')
+    for game in ('frlg', 'lgpe', 'swsh', 'bdsp', 'pla', 'sv', 'za')
     for role in ('host', 'join')
 )
 SUPPORTED_SCRIPTS = frozenset(
-    f'{game}_host.py' for game in ('lgpe', 'swsh', 'bdsp', 'pla', 'sv')
+    f'{game}_host.py' for game in ('lgpe', 'swsh', 'bdsp', 'pla', 'sv', 'za')
 ) | {
     'frlg_trade_host.py', 'frlg_trade_join.py', 'lgpe_join.py',
-    'swsh_connect.py', 'bdsp_connect.py', 'pla_join.py', 'sv_join.py',
+    'swsh_connect.py', 'bdsp_connect.py', 'pla_join.py', 'sv_join.py', 'za_join.py',
 }
 
 

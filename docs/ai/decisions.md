@@ -118,3 +118,15 @@ Bandas orientativas de temperatura: <60 °C fresco, 60–74 templado, >=75 calie
 
 ### Área útil en escritorio macOS
 La ventana nativa de Flet incluye ~32 píxeles de barra de título en el alto configurado. Se abre a 800 × 512 (mínimo igual) en macOS para conservar ~800 × 480 útiles, evitando que el estado de Equipo invada los movimientos. Web y Linux conservan su configuración previa; no se reduce el tamaño de los campos ni se agrega scroll al formulario básico.
+
+### Leyendas Z-A en portátil
+Se añade ZA después de Escarlata/Púrpura. Reutiliza generación/validación PA9 y herramientas locales host/join existentes. La devolución controlada adapta su oferta de 354 bytes, espera sin enviar la oferta previa y vincula el retorno a la sesión nativa; reconexiones no reutilizan originales.
+Una diferencia comprobada de ZA son las marcas Plus Move: cambiar solo nivel puede dejar una copia ilegal. No reparar silenciosamente movimientos/marcas. Mostrar el informe, bloquear copia y permitir original intacto conforme al contrato existente. Prueba física del usuario pendiente. Véase spec 011.
+
+ZA admite idioma 11 (español latinoamericano) en identificación y perfiles portátiles. Conservar ese valor y mostrar su nombre; no reemplazarlo por español 7 ni usar el catálogo antiguo de Settings para rechazarlo. Los demás juegos conservan sus restricciones. Causa y cobertura en spec 011.
+
+### Código visual de Let’s Go
+Configuración portátil usa exactamente tres dígitos ASCII, mostrando los tres Pokémon en orden y la leyenda del CODE_PICKER upstream: 0 Pikachu, 1 Eevee, 2 Bulbasaur, 3 Charmander, 4 Squirtle, 5 Pidgey, 6 Caterpie, 7 Rattata, 8 Jigglypuff, 9 Diglett. Se conservan ceros iniciales; inicial 000. Anfitrión convierte a `0,0,0` para el campo `linkcode` (antes el portátil no pasaba ese tipo al runner). Unirse conserva la búsqueda upstream sin filtro de código; se indica explícitamente en el diálogo. No se modifica el protocolo.
+
+### Selección de juego y foco nativo
+No desmontar la galería al seleccionar un juego mientras haya llamadas de foco/scroll pendientes: Flet 1.0.5 cierra la sesión ante respuestas de controles desmontados, dejando diálogos visibles sin callbacks. Selección y foco comparten coordinación asíncrona; no convertir de nuevo la selección en un callback síncrono que navegue inmediatamente. El arranque tampoco debe sobrescribir una navegación explícita durante los checks. Reproducción, corrección y verificación de Cancelar/Guardar en spec 012.

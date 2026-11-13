@@ -94,3 +94,8 @@ Implementado monitor ampliado con sistema y app: RAM usada/total, porcentajes, C
 
 Corrección de layout nativo: compensación de 32 píxeles de barra de título en macOS (ventana 800 × 512 para contenido ~800 × 480). El cálculo inicial basado en `page.height` no detectaba el espacio ocupado por la barra en Flet; se usa compensación específica de plataforma. Se conserva el layout web/Linux.
 Verificado en cliente nativo macOS: captura Retina de 1600 × 1024 (800 × 512 lógicos), formulario Equipo con los cuatro movimientos separados del estado inferior. 50 pruebas de UI/Equipo aprobadas. No se inició intercambio ni se alteraron los campos del Pokémon.
+
+## Código Let’s Go
+Indicador de equivalencias y vista previa de tres Pokémon en Conexión, compartido por Equipo y modalidades de recibido. Entrada de longitud máxima tres y validación exacta antes de guardar; conserva ceros iniciales y convierte a los tres argumentos separados por coma que espera el lanzador anfitrión. Códigos antiguos por nombres/comas se normalizan al cargar. Se usa CODE_PICKER como fuente única. El joiner upstream no tiene filtro de código: conserva su búsqueda y la UI lo aclara. Pruebas de ambos papeles, conversión de 078 y rechazo de longitud/formato inválidos.
+
+Verificación: 87 pruebas de Equipo y vistas de Equipo/recibidos aprobadas con warnings tratados como errores. Comprobación visual del diálogo pendiente: el primer cliente nativo perdió la sesión de Flet; tras reiniciar, la ventana visible estaba esperando un Pokémon en Identificar entrenador y no se interrumpió ese flujo. No se realizó un intercambio físico como parte de esta validación.

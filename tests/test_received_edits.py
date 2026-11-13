@@ -7,7 +7,7 @@ from pokeldn import pokemon
 from test_pokemon_service import TRAINER, service  # reuse the real helper fixture
 
 
-@pytest.mark.parametrize('game', ['frlg', 'lgpe', 'swsh', 'bdsp', 'pla', 'sv'])
+@pytest.mark.parametrize('game', ['frlg', 'lgpe', 'swsh', 'bdsp', 'pla', 'sv', 'za'])
 def test_received_snapshot_and_edits_preserve_origin_and_trainer(service, game):
     built = service.make(game, 25, TRAINER)
     original = base64.b64decode(built['data'])
@@ -91,3 +91,12 @@ def test_snapshot_tera_type_can_be_used_as_an_explicit_edit(service):
     assert 0 <= snapshot['tera'] <= 18
     result = service.edit_received('sv', data, {'tera': snapshot['tera']})
     assert result['editable']['tera'] == snapshot['tera']
+
+
+def test_za_generation_keeps_latin_american_spanish_trainer(service):
+    trainer = dict(TRAINER, language=11)
+    info = service.make('za', 25, trainer)
+    owner = service.owner('za', base64.b64decode(info['data']))
+    assert info['legal'], info['report']
+    assert owner['language'] == 11
+    assert (owner['ot'], owner['tid'], owner['sid']) == (trainer['ot'], trainer['tid'], trainer['sid'])

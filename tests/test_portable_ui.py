@@ -111,13 +111,52 @@ def test_new_session_selects_initial_screen(view, monkeypatch, busy, ready, expe
 
 def test_gallery_catalog_and_selection_survive_settings(view):
     from gui.portable import PORTABLE_GAMES
-    assert [g.key for g in PORTABLE_GAMES] == ['frlg', 'lgpe', 'swsh', 'bdsp', 'pla', 'sv']
+    assert [g.key for g in PORTABLE_GAMES] == ['frlg', 'lgpe', 'swsh', 'bdsp', 'pla', 'sv', 'za']
     view.go('home')
     assert view.game_list.horizontal
-    view.select_game(PORTABLE_GAMES[-1])
+    asyncio.run(view.select_game(PORTABLE_GAMES[-1]))
     view.go('health')
     view.go('home')
-    assert view.selected_game.key == 'sv'
+    assert view.selected_game.key == 'za'
+
+
+def test_selection_waits_for_gallery_scroll_response(view, monkeypatch):
+    from gui.portable import PORTABLE_GAMES
+    from unittest.mock import Mock
+
+    async def scenario():
+        view.go('home')
+        started, finish = asyncio.Event(), asyncio.Event()
+        async def scroll(**kwargs):
+            started.set()
+            await finish.wait()
+        monkeypatch.setattr(view.game_list, 'scroll_to', scroll)
+        opened = Mock(side_effect=lambda game: setattr(view, 'screen', 'team'))
+        monkeypatch.setattr(view, 'open_team', opened)
+        focus = asyncio.create_task(view.buttons[0].on_focus(None))
+        await started.wait()
+        selection = asyncio.create_task(view.select_game(PORTABLE_GAMES[0]))
+        await asyncio.sleep(0)
+        opened.assert_not_called()
+        finish.set()
+        await asyncio.gather(focus, selection)
+        opened.assert_called_once_with(PORTABLE_GAMES[0])
+        # A focus event queued before navigation must not call the old gallery.
+        await view.buttons[0].on_focus(None)
+
+    asyncio.run(scenario())
+
+
+def test_start_does_not_override_navigation_during_checks(view, monkeypatch):
+    async def check():
+        view.setup.engine_ready = True
+        view.setup.keys_error = ''
+        view.setup.radio_state = 'ready'
+        view.go('keys')
+    monkeypatch.setattr(view.setup, 'check', check)
+    monkeypatch.setattr(view, 'focus', AsyncMock())
+    asyncio.run(view.start())
+    assert view.screen == 'keys'
 
 
 def test_gallery_missing_image_uses_pokeball(monkeypatch):
@@ -144,7 +183,7 @@ def test_gallery_navigation_keeps_focus_visible_and_reaches_settings(view, monke
     for _ in range(10):
         asyncio.run(view.key(SimpleNamespace(key='Arrow Right')))
     assert view.focus_index == len(PORTABLE_GAMES) - 1
-    scroll.assert_awaited_with(offset=352, duration=150)
+    scroll.assert_awaited_with(offset=534, duration=150)
     asyncio.run(view.key(SimpleNamespace(key='Arrow Up')))
     assert view.buttons[view.focus_index] is view.settings_button
     asyncio.run(view.key(SimpleNamespace(key='Arrow Down')))

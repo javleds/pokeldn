@@ -9,6 +9,7 @@ from gui import theme
 from gui.views.sprites import Sprite
 from gui.views.widgets import on_ui
 from pokeldn import console_trainer
+from pokeldn.lgpe.session import CODE_PICKER
 
 PAPER = "#F3F1EA"
 INK = "#243139"
@@ -697,7 +698,7 @@ class TeamView:
         trainer = self.model.trainer
         tid, sid = console_trainer.shown(self.model.game, int(trainer["tid"]), int(trainer["sid"]))
         language = {1: "Japonés", 2: "Inglés", 3: "Francés", 4: "Italiano", 5: "Alemán",
-                    7: "Español", 8: "Coreano", 9: "Chino simplificado", 10: "Chino tradicional"}.get(
+                    7: "Español", 8: "Coreano", 9: "Chino simplificado", 10: "Chino tradicional", 11: "Español latinoamericano"}.get(
                         trainer.get("language"), str(trainer.get("language", "")))
         values = (("Nombre", trainer.get("ot", "")), ("Sexo", "Masculino" if trainer.get("gender") == 0 else "Femenino"),
                   ("Idioma", language), ("ID visible", str(tid)), ("ID secreto visible", str(sid)))
@@ -767,7 +768,22 @@ class TeamView:
                              m.role, lambda e: None, search=False)
         versions = next((f.choices for tool in m.tools.values() for f in tool.fields if f.key == "--version"), ())
         version = self.dropdown(versions, m.version, lambda e: None, search=False)
-        code = ft.TextField(value=m.code, label="Código de intercambio", text_size=16, color=INK)
+        is_lgpe = m.game == 'lgpe'
+        code = ft.TextField(value=m.code, label="Código · 3 dígitos" if is_lgpe else "Código de intercambio",
+                            text_size=16, color=INK, max_length=3 if is_lgpe else None,
+                            keyboard_type=ft.KeyboardType.NUMBER if is_lgpe else None)
+        preview = text('', 13)
+        error = ft.Text('', size=12, color=RED, visible=False)
+        def update_preview(e=None):
+            raw = code.value or ''
+            valid = len(raw) == 3 and all(c in '0123456789' for c in raw)
+            preview.value = (' → '.join(CODE_PICKER[int(c)].capitalize() for c in raw)
+                             if valid else 'Introduce tres dígitos del 0 al 9, en el orden elegido.')
+            if e is not None:
+                preview.update()
+        if is_lgpe:
+            code.on_change = update_preview
+            update_preview()
         has_code = any(f.kind in ("code", "linkcode") or f.key in ("--code", "--link-code")
                        for tool in m.tools.values() for f in tool.fields)
         content = [labeled("Papel", role)]
@@ -775,14 +791,29 @@ class TeamView:
             content.append(labeled("Versión", version))
         if has_code:
             content.append(code)
-        content.append(text("Conexión local · opciones según el juego", 13))
+            if is_lgpe:
+                content.append(preview)
+                for start in (0, 5):
+                    content.append(ft.Row([ft.Container(text(f'{i} = {CODE_PICKER[i].capitalize()}', 11), expand=True)
+                                           for i in range(start, start + 5)], spacing=3))
+                content.append(error)
+        content.append(text("Código para Anfitrión · Unirse conserva la búsqueda de pokeLDN." if is_lgpe
+                            else "Conexión local · opciones según el juego", 12))
         async def save(e):
             if not m.busy:
-                m.configure(role.value, version.value or m.version, code.value)
+                try:
+                    m.configure(role.value, version.value or m.version, code.value)
+                except ValueError as exc:
+                    if not is_lgpe:
+                        raise
+                    error.value, error.visible = str(exc), True
+                    if error in content:
+                        error.update()
+                    return
                 await m.validate_all()
             self._dismiss()
             self.refresh()
-        self._dialog("Conexión", ft.Column(content, spacing=14),
+        self._dialog("Conexión", ft.Column(content, spacing=8 if is_lgpe else 14),
                      [ft.TextButton("Cancelar", on_click=self._dismiss), ft.TextButton("Guardar", on_click=save)])
 
     async def _start(self, e):

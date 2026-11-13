@@ -113,6 +113,7 @@ class HostSession:
         # Online (pokeldn.online): the partner's console's pick is ours, previewed then picked once
         # it arrives, and our 0102 and 0104 wait for both consoles' 0102 (docs/online.md).
         self.partner = partner
+        self.return_gate = getattr(partner, "gate", None)
         self.shown = None                 # the partner's record the console was shown
         self.console_confirmed = False
         self.after_cancel = False         # the console redraws our pick after its cancel
@@ -222,6 +223,8 @@ class HostSession:
             if join is None:
                 self.log("[za-host] a Session join that does not parse; ignored")
                 return
+            if self.return_gate is not None:
+                self.return_gate.bind((bytes(join['source_constant_id']), join['source_var']))
             first = self.join is None
             self.join, self.guest_var = join, join["source_var"]
             if not first and self.update_acked:
@@ -268,6 +271,8 @@ class HostSession:
                 self._depart_phase("status", now)
         elif kind == za.SESSION_LEAVE_REQUEST and len(payload) >= 15:
             # Unanswered, a console re-sends its leave every 0.5 s and gives up after four (docs/za.md).
+            if self.return_gate is not None:
+                self.return_gate.close()
             self.leave_requests += 1
             self._send([(pia_connect.PROTO_SESSION,
                          za.build_leave_response(payload, os.urandom(4)), None)],
@@ -439,6 +444,8 @@ class HostSession:
         """The partner's progress: their pick previewed then picked on the console, a cancel when
         they withdraw it, our 0102 and 0104 once both consoles confirmed."""
         if 1 not in self.update_acked or self.committed:
+            return
+        if self.return_gate is not None and self.return_gate.closed.is_set():
             return
         theirs = self.partner.theirs()
         if self.shown is not None and theirs.offer != self.shown and not self.confirmed:

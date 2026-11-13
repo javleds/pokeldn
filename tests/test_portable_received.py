@@ -158,10 +158,13 @@ from test_pokemon_service import TRAINER, service
 
 
 @pytest.mark.parametrize('mode', ['evolution', 'level', 'nature', 'effort', 'modifier', 'validator'])
-def test_modes_process_real_record_without_rebuilding_trainer(model, service, mode):
+@pytest.mark.parametrize('game', ['sv', 'za'])
+def test_modes_process_real_record_without_rebuilding_trainer(model, service, mode, game):
+    model.game = game
+    model.version = "za" if game == "za" else "scarlet"
     model.mode = mode
     model.service = service
-    built = service.make('sv', 25, TRAINER)
+    built = service.make(game, 25, TRAINER)
     data = base64.b64decode(built['data'])
     model.params['level'] = '100'
     model.params['nature'] = 3
@@ -176,7 +179,15 @@ def test_modes_process_real_record_without_rebuilding_trainer(model, service, mo
             model.edit(0, 'nickname', 'TEST')
             await model.validate(0)
             assert model.results[0]['editable']['nickname'] == 'TEST'
-            assert model.results[0]['identity'] == service.edit_received('sv', data)['identity']
+            assert model.results[0]['identity'] == service.edit_received(game, data)['identity']
+        elif game == 'za' and mode == 'level':
+            # Raising this fixture to 100 requires a ZA Plus Move flag. Level
+            # mode must not silently change moves to repair an illegal edit.
+            assert model.phase == 'review' and not model.candidate_legal
+            assert 'Plus Move' in model.report
+            assert not (model.return_dir/'response.json').exists()
+            await model.return_original_now()
+            assert json.loads((model.return_dir/'response.json').read_text())['action'] == 'original'
         else:
             assert model.phase == 'returning', model.error
             response = json.loads((model.return_dir/'response.json').read_text())
@@ -248,7 +259,7 @@ def test_unreadable_original_can_still_return_intact(model, monkeypatch, mode):
     assert json.loads((model.return_dir/'response.json').read_text())['action'] == 'original'
 
 
-@pytest.mark.parametrize('game', ['frlg', 'lgpe', 'swsh', 'bdsp', 'pla', 'sv'])
+@pytest.mark.parametrize('game', ['frlg', 'lgpe', 'swsh', 'bdsp', 'pla', 'sv', 'za'])
 def test_received_native_records_are_read_without_changing_original(model, service, game):
     from pokeldn import pokemon
     model.game = game

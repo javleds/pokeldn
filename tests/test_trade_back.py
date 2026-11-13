@@ -187,7 +187,11 @@ def test_a_brilliant_diamond_room_returns_the_console_record():
     assert p.trades == 2 and got == [ours, theirs]
 
 
-def test_a_za_host_previews_and_picks_the_console_record():
+@pytest.mark.parametrize('controlled', [False, True])
+def test_a_za_host_previews_and_picks_the_console_record(tmp_path, monkeypatch, controlled):
+    if controlled:
+        monkeypatch.setenv('POKELDN_RETURN_DIR', str(tmp_path))
+        monkeypatch.setenv('POKELDN_RETURN_GAME', 'za')
     from test_online import za_player, za_seat
     head = bytes.fromhex("0101b90300bc815801")
     ours, theirs = head + bytes([0x11]) * 344 + b"\x00", head + bytes([0xA1]) * 344 + b"\x00"
@@ -195,6 +199,15 @@ def test_a_za_host_previews_and_picks_the_console_record():
     clock, shown = [10.0], []
     for trade_no, pick in ((1, theirs), (2, ours)):
         if trade_no == 2:
+            if controlled:
+                from test_portable_return import respond, wait_until
+                gate = host.return_gate
+                for _ in range(50):
+                    console.run(clock[0] + .05, clock[0])
+                    clock[0] += .1
+                assert host.trades == 1 and host.partner.theirs().offer is None
+                respond(tmp_path, gate, 'original')
+                wait_until(lambda: gate.current() is not None)
             console.heard.clear()       # the first trade's messages would answer the player's checks
         play = za_player(console, pick)
         while host.trades < trade_no and clock[0] < 60 * trade_no:
@@ -204,6 +217,8 @@ def test_a_za_host_previews_and_picks_the_console_record():
         shown.append([x[2] for x in console.game_heard() if x[2][:2] == b"\x01\x01"])
     assert host.trades == 2
     assert shown[0][-1] == ours and shown[1][-1] == theirs
+    if controlled:
+        gate.close()
 
 
 def test_a_lets_go_host_answers_the_next_round_with_the_console_record(monkeypatch):

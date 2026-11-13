@@ -30,3 +30,5 @@ El punto de pausa conserva el cierre de la etapa de selectores. Después se impl
 Las decisiones expresas posteriores del usuario prevalecen sobre estos documentos. Al cambiar una, actualizar su estado y motivo en `decisions.md` y ajustar la especificación si corresponde. Registrar mediciones con hardware, versión, carga y método; no transformar estimaciones en requisitos comprobados.
 
 No registrar claves, rutas personales innecesarias o transcripciones completas. Mantener aquí acuerdos y evidencia útil; el detalle funcional upstream permanece en su documentación original.
+
+Leyendas Z-A incorporado a la galería y a los adaptadores portátiles de devolución: [spec 011](../specs/011-portable-za.md). Su validación contempla marcas Plus Move; una modificación de nivel ilegal no se repara cambiando movimientos de forma silenciosa. Prueba física pendiente.

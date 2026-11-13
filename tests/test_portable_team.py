@@ -145,7 +145,7 @@ def test_corrupt_store_is_preserved_and_read_only(team):
     assert team.store.path.read_text() == '{invalid'
 
 
-@pytest.mark.parametrize('game', ['frlg', 'lgpe', 'swsh', 'bdsp', 'pla', 'sv'])
+@pytest.mark.parametrize('game', ['frlg', 'lgpe', 'swsh', 'bdsp', 'pla', 'sv', 'za'])
 def test_local_catalog_excludes_online_and_gifts(game):
     assert set(local_tools(game)) == {'host', 'join'}
     for tool in local_tools(game).values():
@@ -453,3 +453,43 @@ def test_received_trainer_result_cannot_cross_sessions(team, tmp_path):
     team.run_stamp = 'old'
     asyncio.run(team._learn_received_trainer('old', str(folder)))
     assert team.found_trainer is None
+
+
+@pytest.mark.parametrize('game,language,accepted', [('za', 11, True), ('za', 7, True), ('za', 12, False), ('sv', 11, False)])
+def test_discovery_preserves_za_latin_american_spanish(team, tmp_path, game, language, accepted):
+    import json
+    model = Team(game, team.setup, store=TeamStore(game, tmp_path / 'profiles'), service=team.service)
+    model.discovering = True
+    model.completed = 1
+    model._line('[trainer] ' + json.dumps(dict(game=game, source='session', ot='Fixture',
+                                             tid=123, sid=456, gender=0, language=language)))
+    async def scenario():
+        model._exited(0)
+        assert bool(model.profiles) is accepted
+        assert model.phase == ('done' if accepted else 'error')
+        if accepted:
+            restored = Team(game, team.setup, store=model.store, service=team.service)
+            assert restored.trainer == dict(ot='Fixture', tid=123, sid=456, gender=0, language=language)
+            await model.validate_all()
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize('role', ['host', 'join'])
+def test_lgpe_code_is_three_digits_and_reaches_launcher(team, tmp_path, role):
+    from pokeldn.app import command
+    from pokeldn.lgpe.session import code_picks
+    model = Team('lgpe', team.setup, store=TeamStore('lgpe', tmp_path / 'drafts'), service=team.service)
+    assert model.code == '000'
+    model.configure(role, model.version, '078')
+    values = model._values(model.tools[role], [tmp_path / 'offer.pb7'])
+    if role == 'host':
+        field = next(f for f in model.tools[role].fields if f.kind == 'linkcode')
+        assert values[field.key] == '0,7,8'
+        assert not command.code_error(field, values[field.key], 'lgpe')
+        assert code_picks(values[field.key].split(',')) == [0, 7, 8]
+    else:
+        assert '--code' not in values  # Upstream joiner scans; it has no code filter.
+    for invalid in ('', '12', '1234', 'a12'):
+        with pytest.raises(ValueError, match='tres dígitos'):
+            model.configure(role, model.version, invalid)
+    assert model.code == '078'
