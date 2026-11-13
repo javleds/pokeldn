@@ -26,6 +26,9 @@ class Service:
         return dict(data=base64.b64encode(b'edited' if fields else data).decode(),
                     editable=snapshot, legal=self.legal, report='Legal' if self.legal else 'Invalid\nOther error',
                     species='Squirtle', species_id=7, level=snapshot['level'], ot='Original')
+    def move_options(self, game, species, trainer, level, shiny, version, options):
+        return [33, 145]
+
     def owner(self, game, data):
         return dict(ot='Original', tid=1, sid=2, gender=0, language=7)
     def check_bytes(self, game, data):
@@ -44,7 +47,6 @@ def model(tmp_path, monkeypatch):
     m.return_dir = tmp_path/'portable'/'returns'/'fixture'
     m.return_dir.mkdir(parents=True)
     m.load_options = AsyncMock(return_value={})
-    m.load_moves = AsyncMock(return_value=[])
     return m
 
 

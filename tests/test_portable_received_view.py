@@ -189,3 +189,26 @@ def test_active_run_cannot_reset_through_queued_configure_action():
     ui._new_run(None)
     ui.model.reset.assert_not_called()
     assert ui.body.controls == [ui.editor_group]
+
+
+def test_comparison_shows_only_current_calculated_changes_without_mutating_data():
+    from copy import deepcopy
+    ui = view('level')
+    received(ui, 'review')
+    m = ui.model
+    m.received_info.update(editable={'level': 5, 'moves': [33, 145, 0, 0]},
+                           identity={'ot': 'Original', 'pid': 123, 'tid': 1, 'sid': 2})
+    m.results[0] = deepcopy(m.received_info)
+    m.results[0]['editable']['level'] = 50
+    m._revision = [2] * 6
+    m.candidate_revision = 2
+    m.states[0] = 'legal'
+    before = deepcopy(m.received_info)
+    rows = ui._comparison_rows()
+    assert [(label, old, new) for label, old, new in rows if old != new] == [('Nivel', '5', '50')]
+    ui._comparison(None)
+    assert m.received_info == before
+    m._revision[0] = 3
+    assert ui._comparison_candidate() is None
+    assert all(after == '—' for _, _, after in ui._comparison_rows())
+    assert ui.comparison.visible

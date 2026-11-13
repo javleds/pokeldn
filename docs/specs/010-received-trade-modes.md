@@ -69,3 +69,20 @@ Helper Release compilado sin advertencias ni errores. 362 pruebas de servicio, c
 Habilitados los seis juegos (frlg/lgpe/swsh/bdsp/pla/sv) como host y join. Cada adaptador retrasa la siguiente oferta mientras mantiene servicio de red. Directorio de sesión exclusivo y vínculos con identidad/época del participante evitan reutilizar una devolución en otra sesión; cambios de participante abortan en lugar de reenvío.
 
 Pruebas del transporte: 41 aprobadas en suite amplia de trade-back/gate; 92 aprobadas y 4 omitidas en regresiones de anfitrión; verificaciones posteriores de guards 77 aprobadas, 4 omitidas y 2 excluidas en esa selección; simulaciones SWSH/BDSP con pausa de cinco segundos 2 aprobadas; FRLG completo con radio simulada con pérdida/reordenamiento 1 aprobada (ambas confirmaciones y salida limpia). Los conteos corresponden a selecciones superpuestas, no sumarlos como pruebas únicas. Auditoría independiente de aislamiento/lifecycle sin bloqueadores restantes observados. No se realizaron intercambios físicos ni flasheos.
+
+## Corrección: opciones de movimientos al validar una copia
+Nivel, Naturaleza, EVs y Modificador llamaban a `Team.load_moves` sin los argumentos requeridos, provocando un TypeError y bloqueando una copia legal. Se pasa el borrador normalizado, una copia del entrenador original y la versión, siguiendo el contrato de Equipo.
+
+La fixture de pruebas deja de sustituir `load_moves`: se ejecuta la implementación compartida, incluso en los seis casos con registros reales de PKHeX. Antes de la corrección fallaban cinco pruebas; con ella se verifican devolución automática de las modificaciones legales y edición manual sin reconstruir al entrenador. No cambia la excepción de devolución del original intacto.
+
+Resultado de esta corrección: 80 pruebas aprobadas de controlador recibido, vista recibida y Equipo, con warnings tratados como errores. Prueba física pendiente del usuario.
+
+## Comparación de datos para pruebas
+Objetivo: observar el original y la copia calculada en los modos de un solo recibido, sin modificar el protocolo ni añadir scroll a la pantalla principal.
+Plan: reutilizar `received_info.editable/identity` como original y `results[0]` como resultado, solo si corresponde a la revisión actual. Añadir resumen de diferencias a la tarjeta e icono de comparación disponible también durante edición/retorno. Modal con columnas Campo/Original/Copia, diferencias destacadas, scroll interno y valores desconocidos explícitos. Incluir todos los campos expuestos por el servicio; no afirmar igualdad binaria ni confirmar cambios realizados posteriormente por la consola. Probar ausencia de copia, revisión obsoleta, cambio exclusivo de nivel y conservación de identidad; inspeccionar a 800 × 480 con fixture sin radio.
+
+Implementado el resumen y modal de comparación. 44 pruebas de controlador/vista aprobadas, incluyendo copia obsoleta y cambio exclusivo de nivel. Modal inspeccionado a 800 × 480 con fixture sin radio; referencia `references/implemented-received-comparison-demo-800x480.jpg`. Los detalles usan scroll interno para preservar espacio de edición y acciones.
+
+### Identidad y procedencia al inicio del comparador
+Se prioriza la sección de identidad (OT, TID/SID de 16 bits, PID, EC, tracker y encuentro) antes de estadísticas. Se amplía la lectura de PKHeX con género del entrenador, idioma, fecha de encuentro, lugar/fecha de huevo y banderas de huevo. Son datos de lectura, no nuevos campos editables. Fechas ausentes se muestran como no disponibles; IDs de catálogos permanecen explícitos. La igualdad compara campos extraídos, no certifica captura legítima ni unicidad global.
+Verificación de extracción ampliada: compilación Release sin warnings/errores y 39 pruebas aprobadas de edición de recibidos y comparador, incluyendo los seis formatos de juego. No se realizaron intercambios físicos.

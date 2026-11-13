@@ -42,6 +42,7 @@ class ReceivedView(TeamView):
         self.logs = self.icon(ft.Icons.ARTICLE_OUTLINED, 'Ver logs', self._logs)
         self.original = self.icon(ft.Icons.UNDO, 'Devolver original intacto', self._original, INK)
         self.edited = self.icon(ft.Icons.SEND, 'Devolver Pokémon editado', self._edited, GREEN)
+        self.comparison = self.icon(ft.Icons.COMPARE_ARROWS, 'Comparar datos del Pokémon', self._comparison)
         self.details = self.icon(ft.Icons.FACT_CHECK_OUTLINED, 'Detalles de legalidad', self._details)
         self.loader = ft.ProgressRing(width=23, height=23, stroke_width=3, color=CYAN)
         self.phase_label = text('', 14, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS)
@@ -66,7 +67,7 @@ class ReceivedView(TeamView):
         self.control = ft.Column([
             ft.Row([self.back, self.mode_menu, ft.Container(expand=True), self.connection], height=36, spacing=5),
             ft.Row([ft.Container(self.phase_label, expand=True), self.loader, self.original, self.edited,
-                    self.details, self.logs, self.cancel, self.new_run, self.start], height=40, spacing=5),
+                    self.comparison, self.details, self.logs, self.cancel, self.new_run, self.start], height=40, spacing=5),
             self.body, self.status,
         ], spacing=7, expand=True)
         self.model.listeners.add(self._notified)
@@ -159,6 +160,13 @@ class ReceivedView(TeamView):
         lines = [text(info.get('nickname') or info.get('species') or 'Pokémon recibido', 21),
                  text(f"{info.get('species', '')} · Nivel {info.get('level', '?')}", 15),
                  text(f"Entrenador original: {info.get('ot', '?')}", 14)]
+        changes = [label for label, before, after in self._comparison_rows() if before != after]
+        candidate = self._comparison_candidate()
+        lines.append(text('Copia: ' + (', '.join(changes) if changes else 'sin diferencias en los datos mostrados')
+                          if candidate else 'Original recibido · Copia aún no calculada', 13, max_lines=2))
+        if candidate and candidate.get('editable', {}).get('level') is not None:
+            lines.append(text(f"Nivel: {info.get('level', '?')} → {candidate['editable']['level']}", 16,
+                              weight=ft.FontWeight.W_700))
         if validator:
             lines.append(text('Legal' if legality is True else 'No legal' if legality is False else 'Validando…', 16,
                               weight=ft.FontWeight.W_700))
@@ -189,6 +197,7 @@ class ReceivedView(TeamView):
         self.edited.visible = editing
         self.edited.disabled = not m.candidate_legal or m.states[0] in ('pending', 'validating')
         self.details.visible = bool(m.report)
+        self.comparison.visible = bool(m.received_info)
         for control in self.param_controls:
             control.disabled = active
         self.phase_label.value = {
@@ -264,6 +273,67 @@ class ReceivedView(TeamView):
             return
         await m.return_edited_now()
         self.refresh()
+
+    def _comparison_candidate(self):
+        m = self.model
+        revision = getattr(m, '_revision', [-1])[0]
+        if (m.states[0] in ('pending', 'validating') or revision < 0
+                or getattr(m, 'candidate_revision', -2) != revision):
+            return None
+        return m.results[0]
+
+    def _comparison_rows(self):
+        original = self.model.received_info or {}
+        candidate = self._comparison_candidate()
+        labels = dict(species='Especie', form='Forma', nickname='Apodo', level='Nivel', shiny='Variocolor',
+                      nature='Naturaleza', ability='Habilidad', gender='Género Pokémon', held_item='Objeto',
+                      ball='Poké Ball', friendship='Amistad', moves='Movimientos', ivs='IVs', effort='EV / AV / Esfuerzo',
+                      trainer_gender='Género entrenador', language='Idioma (ID)', met_date='Fecha de encuentro',
+                      egg_location='Lugar de huevo (ID)', egg_date='Fecha de huevo',
+                      is_egg='Es huevo', was_egg='Procede de huevo',
+                      ot='Entrenador', tid='TID (16 bits)', sid='SID (16 bits)', pid='PID',
+                      encryption_constant='EC', version='Juego de origen', met_location='Lugar de encuentro',
+                      met_level='Nivel de encuentro', tracker='HOME tracker', alpha='Alfa',
+                      gigantamax='Gigamax', dynamax_level='Nivel Dinamax', tera='Teratipo')
+        rows = []
+        for section in ('identity', 'editable'):
+            before, after = original.get(section, {}), (candidate or {}).get(section, {})
+            for key in dict.fromkeys([*before, *after]):
+                rows.append((labels.get(key, key), self._data_value(key, before.get(key)),
+                             self._data_value(key, after.get(key)) if candidate else '—'))
+        return rows
+
+    def _data_value(self, key, value):
+        if value is None:
+            return 'No disponible'
+        if isinstance(value, bool):
+            return 'Sí' if value else 'No'
+        if isinstance(value, dict):
+            return ' · '.join(f'{title} {value.get(stat, "—")}' for stat, title in STATS)
+        if isinstance(value, list):
+            return ' / '.join(self._data_value('move', item) for item in value)
+        catalog = {'species': self.species_names, 'move': self.move_names, 'nature': self.nature_names}.get(key, [])
+        name = next((entry['name'] for entry in catalog if entry['id'] == value), None)
+        return f'{name} ({value})' if name else str(value) if value != '' else 'Sin apodo'
+
+    def _comparison(self, e):
+        candidate = self._comparison_candidate()
+        rows = self._comparison_rows()
+        controls = [text('Datos leídos de los archivos · No verifica cambios posteriores en la consola.', 12),
+                    text('Copia calculada' if candidate else 'Sin copia actual · Mostrando solo el original', 14),
+                    ft.Row([text('Campo', 13, width=145), text('Original', 13, expand=True),
+                            text('Copia', 13, expand=True)])]
+        for label, before, after in rows:
+            changed = candidate is not None and before != after
+            controls.append(ft.Container(ft.Row([text(label, 12, width=145),
+                text(before, 12, expand=True, selectable=True), text(after, 12, expand=True, selectable=True)],
+                vertical_alignment=ft.CrossAxisAlignment.START), padding=5,
+                bgcolor='#FFF0C2' if changed else None))
+        if not rows:
+            controls.append(text('No se pudieron leer los datos detallados del original.', 14))
+        self._dialog('Original y copia · Cambios resaltados',
+                     ft.Container(ft.ListView(controls, spacing=5, height=240), width=660, bgcolor=PAPER),
+                     [ft.TextButton('Cerrar', on_click=self._dismiss)])
 
     def _details(self, e):
         self._dialog('Informe de legalidad', ft.Container(ft.ListView([

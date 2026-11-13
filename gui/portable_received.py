@@ -9,6 +9,7 @@ from pathlib import Path
 import tempfile
 
 from gui.portable_team import Team, TeamStore, DATA, STATS
+from gui.views.pokemon import VERSIONS
 from pokeldn import pokemon, portable_return
 from pokeldn.app import received
 
@@ -282,6 +283,7 @@ class ReceivedTeam(Team):
         self.notify()
         try:
             draft = self.normalized(self.slots[0])
+            owner, version = deepcopy(self.trainer), VERSIONS.get(self.version, '')
             flat = {k: draft[k] for k in ('species', 'level', 'nickname', 'shiny')}
             flat['species'], flat['level'] = int(flat['species']), int(flat['level'])
             flat.update(draft['options'])
@@ -302,7 +304,7 @@ class ReceivedTeam(Team):
             self.error = self.errors[0]
             await self.load_options(0)
             try:
-                await self.load_moves(0)
+                await self.load_moves(0, draft, owner, version)
             except pokemon.BuilderError:
                 pass
         except (ValueError, TypeError, OSError, pokemon.BuilderError) as exc:

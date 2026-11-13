@@ -1141,6 +1141,10 @@ static partial class Program
             {
                 ["ot"] = pk.OriginalTrainerName, ["tid"] = pk.TID16, ["sid"] = pk.SID16,
                 ["pid"] = pk.PID, ["encryption_constant"] = pk.EncryptionConstant,
+                ["trainer_gender"] = pk.OriginalTrainerGender, ["language"] = pk.Language,
+                ["met_date"] = pk.MetDate?.ToString("yyyy-MM-dd"),
+                ["egg_location"] = pk.EggLocation, ["egg_date"] = pk.EggMetDate?.ToString("yyyy-MM-dd"),
+                ["is_egg"] = pk.IsEgg, ["was_egg"] = pk.WasEgg,
                 ["version"] = (int)pk.Version, ["met_location"] = pk.MetLocation, ["met_level"] = pk.MetLevel,
                 ["tracker"] = (pk is IHomeTrack home ? home.Tracker : 0).ToString(),
             };

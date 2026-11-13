@@ -103,3 +103,11 @@ Se conserva un registro privado de originales y devoluciones pendientes. Al rein
 - La identificación portátil usa también `Service.owner` y `console_trainer.own`, igual que `Find mine` de escritorio. No depende exclusivamente de eventos `[trainer]`.
 - Solo el primer recibido de la sesión confirmada puede aportar el perfil: sin huevo, handler original y versión del juego compatible. No se adopta el OT de un Pokémon ajeno ni el del segundo intercambio de devolución.
 - El cierre espera la lectura final antes de declarar identificación fallida y liberar la sesión; resultados tardíos no cruzan `run_stamp`. Se conserva la prioridad del entrenador ya identificado por protocolo.
+
+### Validación de recibidos y opciones de movimientos
+Los modos que editan un recibido reutilizan `Team.load_moves(index, draft, owner, version)` con el borrador y entrenador capturados para la validación. Las pruebas de estos flujos deben ejecutar el cargador compartido real, sin reemplazarlo por un mock permisivo que oculte incompatibilidades de argumentos. Se conservan validación final y devolución exacta del original como excepción.
+
+### Inspección del recibido para pruebas
+Las vistas de un solo recibido incorporan comparación de los campos expuestos por PKHeX entre original y copia actual. La tarjeta resume cambios y nivel; un icono abre el detalle con diferencias resaltadas, sin desplazar el editor ni añadir scroll principal. Los resultados de una revisión anterior no se presentan como actuales. TID/SID se rotulan como 16 bits; los catálogos disponibles muestran nombre e ID. Esta comparación no garantiza identidad binaria ni observa cambios posteriores hechos por la consola.
+
+El comparador prioriza identidad y procedencia sobre estadísticas. Incluye género/idioma del entrenador y datos de encuentro/huevo extraídos de PKHeX, sin habilitar su edición. Ausencia de fecha no se transforma en una fecha inventada.

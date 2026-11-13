@@ -46,3 +46,5 @@ El wireframe simula también modalidades futuras. La captura corresponde al modo
 - [Informe completo en modal](implemented-validator-report-demo-800x480.jpg).
 
 Capturas a 800 × 480; los datos son de demostración y no acreditan intercambio físico.
+
+- [Comparación de original y copia](implemented-received-comparison-demo-800x480.jpg): fixture visual DEMO a 800 × 480, cambio exclusivo de nivel; sin intercambio físico.

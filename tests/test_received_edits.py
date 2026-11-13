@@ -13,6 +13,9 @@ def test_received_snapshot_and_edits_preserve_origin_and_trainer(service, game):
     original = base64.b64decode(built['data'])
     before = service.edit_received(game, original)
     updated = service.edit_received(game, original, {'nickname': 'TEST', 'friendship': 255})
+    assert {'tid', 'sid', 'pid', 'encryption_constant', 'trainer_gender', 'language',
+            'met_date', 'met_location', 'met_level', 'egg_location', 'egg_date',
+            'is_egg', 'was_egg', 'tracker'} <= before['identity'].keys()
     assert before['editable']['species'] == 25
     assert before['editable']['nickname'] == ''
     assert updated['editable']['nickname'] == 'TEST'
