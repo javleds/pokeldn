@@ -721,9 +721,13 @@ class TeamView:
         self.refresh()
         self.page.run_task(self._commit, self.selected)
 
-    def _dialog(self, title, content, actions):
-        dialog = ft.AlertDialog(title=text(title, 21, weight=ft.FontWeight.W_700),
-                                content=ft.Container(content, width=600), bgcolor=PAPER,
+    def _dialog(self, title, content, actions, *, width=600, icon=None):
+        heading = text(title, 21, weight=ft.FontWeight.W_700)
+        if icon is not None:
+            heading = ft.Row([ft.Container(ft.Icon(icon, color=GREEN, size=24),
+                bgcolor="#D9EEE4", padding=10, border_radius=12), heading], spacing=12)
+        dialog = ft.AlertDialog(title=heading,
+                                content=ft.Container(content, width=width), bgcolor=PAPER,
                                 actions=actions, modal=True, scrollable=False)
         self.page.show_dialog(dialog)
         return dialog
@@ -760,11 +764,23 @@ class TeamView:
         language = {1: "Japonés", 2: "Inglés", 3: "Francés", 4: "Italiano", 5: "Alemán",
                     7: "Español", 8: "Coreano", 9: "Chino simplificado", 10: "Chino tradicional", 11: "Español latinoamericano"}.get(
                         trainer.get("language"), str(trainer.get("language", "")))
-        values = (("Nombre", trainer.get("ot", "")), ("Sexo", "Masculino" if trainer.get("gender") == 0 else "Femenino"),
-                  ("Idioma", language), ("ID visible", str(tid)), ("ID secreto visible", str(sid)))
+        identity = ft.Container(ft.Column([
+            text(trainer.get("ot", "") or "Sin nombre", 24, weight=ft.FontWeight.W_700,
+                 selectable=True),
+            text(f'{"Masculino" if trainer.get("gender") == 0 else "Femenino"} · {language}', 14),
+        ], tight=True, spacing=5), padding=16, bgcolor="#FFFFFF", border_radius=12,
+            border=ft.Border.all(1, "#DCE1DA"))
+        identifiers = ft.Row([
+            ft.Container(labeled(label, text(str(value), 22, weight=ft.FontWeight.W_700,
+                                            selectable=True)),
+                         padding=14, bgcolor="#E4EAE5", border_radius=10, expand=True)
+            for label, value in (("ID visible", tid), ("ID secreto visible", sid))
+        ], spacing=10)
         self._dialog("Datos del entrenador", ft.Column([
-            ft.Row([labeled(label, text(value, 17), expand=True) for label, value in values[i:i + 3]], spacing=15)
-            for i in range(0, len(values), 3)], spacing=18), [ft.TextButton("Listo", on_click=self._dismiss)])
+            identity, identifiers, text("Perfil seleccionado para este juego", 12),
+        ], tight=True, spacing=12, horizontal_alignment=ft.CrossAxisAlignment.STRETCH), [ft.TextButton("Listo", on_click=self._dismiss,
+            style=ft.ButtonStyle(bgcolor=GREEN, color="#FFFFFF", padding=ft.Padding(22, 10, 22, 10)))],
+            width=460, icon=ft.Icons.BADGE_OUTLINED)
 
     def _find_trainer(self, e):
         return_original = ft.Switch(label="Devolver Pokémon original", value=True)
@@ -829,8 +845,10 @@ class TeamView:
         versions = next((f.choices for tool in m.tools.values() for f in tool.fields if f.key == "--version"), ())
         version = self.dropdown(versions, m.version, lambda e: None, search=False)
         is_lgpe = m.game == 'lgpe'
-        code = ft.TextField(value=m.code, label="Código · 3 dígitos" if is_lgpe else "Código de intercambio",
-                            text_size=16, color=INK, max_length=3 if is_lgpe else None,
+        code = ft.TextField(value=m.code,
+                            text_size=18, color=INK, bgcolor="#FFFFFF", border_radius=9,
+                            content_padding=ft.Padding(12, 10, 12, 10),
+                            max_length=3 if is_lgpe else None,
                             keyboard_type=ft.KeyboardType.NUMBER if is_lgpe else None)
         preview = text('', 13)
         error = ft.Text('', size=12, color=RED, visible=False)
@@ -846,19 +864,32 @@ class TeamView:
             update_preview()
         has_code = any(f.kind in ("code", "linkcode") or f.key in ("--code", "--link-code")
                        for tool in m.tools.values() for f in tool.fields)
-        content = [labeled("Papel", role)]
+        code_field = labeled("Código · 3 dígitos" if is_lgpe else "Código de intercambio", code, expand=True)
+        paired_code = has_code and not versions
+        columns = 2 if versions or paired_code else 1
+        field_width = ((540 if is_lgpe else 480) - 28 - (14 if columns == 2 else 0)) / columns
+        role.width = version.width = field_width
+        fields = [labeled("Papel en el intercambio", role, expand=True)]
         if versions:
-            content.append(labeled("Versión", version))
+            fields.append(labeled("Versión del juego", version, expand=True))
+        elif paired_code:
+            fields.append(code_field)
+        content = [ft.Container(ft.Row(fields, spacing=14,
+            vertical_alignment=ft.CrossAxisAlignment.START), padding=14, bgcolor="#FFFFFF",
+            border_radius=12, border=ft.Border.all(1, "#DCE1DA"))]
         if has_code:
-            content.append(code)
+            if not paired_code:
+                content.append(code_field)
             if is_lgpe:
-                content.append(preview)
+                content.append(ft.Container(preview, bgcolor="#D9EEE4", padding=9, border_radius=8))
                 for start in (0, 5):
                     content.append(ft.Row([ft.Container(text(f'{i} = {CODE_PICKER[i].capitalize()}', 11), expand=True)
                                            for i in range(start, start + 5)], spacing=3))
                 content.append(error)
-        content.append(text("Código para Anfitrión · Unirse conserva la búsqueda de pokeLDN." if is_lgpe
-                            else "Conexión local · opciones según el juego", 12))
+        content.append(ft.Row([ft.Icon(ft.Icons.WIFI, size=16, color=GREEN),
+            text("Local · Código para Anfitrión; Unirse busca sin código." if is_lgpe
+                 else "Conexión local · Usa el mismo código en tu consola." if has_code
+                 else "Conexión local · Opciones disponibles para este juego.", 12, expand=True)], spacing=6))
         async def save(e):
             if not m.busy:
                 try:
@@ -873,8 +904,12 @@ class TeamView:
                 await m.validate_all()
             self._dismiss()
             self.refresh()
-        self._dialog("Conexión", ft.Column(content, spacing=8 if is_lgpe else 14),
-                     [ft.TextButton("Cancelar", on_click=self._dismiss), ft.TextButton("Guardar", on_click=save)])
+        self._dialog("Configurar conexión", ft.Column(content, tight=True, spacing=8 if is_lgpe else 14,
+                     horizontal_alignment=ft.CrossAxisAlignment.STRETCH),
+                     [ft.TextButton("Cancelar", on_click=self._dismiss), ft.TextButton("Guardar", on_click=save,
+                         style=ft.ButtonStyle(bgcolor=GREEN, color="#FFFFFF",
+                                              padding=ft.Padding(22, 10, 22, 10)))],
+                     width=540 if is_lgpe else 480, icon=ft.Icons.WIFI)
 
     async def _start(self, e):
         await self.model.start()

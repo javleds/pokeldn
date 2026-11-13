@@ -43,3 +43,12 @@ Las recomendaciones y límites están en [spec 013](../../013-portable-ui-polish
 ![Preparación](14-preparando.png)
 
 ![Error](16-error-inicio.png)
+
+## Pulido de modales · spec 014
+
+- [Ficha del entrenador](24-modal-entrenador.png)
+- [Conexión compacta](25-modal-conexion.png)
+- [Conexión Let’s Go](26-modal-conexion-lgpe.png)
+- [Error LGPE con acciones accesibles](27-modal-conexion-error.png)
+
+Capturas nativas con perfiles de demostración, sin intercambio físico. Sustituyen la propuesta visual anterior de conexión.

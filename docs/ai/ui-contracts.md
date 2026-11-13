@@ -33,3 +33,5 @@ Pruebas: `test_focus_clears_query_without_changing_committed_option`, `test_trai
 ## Registro mínimo por cambio
 
 Registrar decisión, spec, componentes afectados, pruebas ejecutadas y límites. Al corregir una regresión, conservar su causa técnica aquí o en desarrollo y su reproducción en la spec; no afirmar una prueba visual que solo se hizo con mocks.
+
+Modales de entrenador/conexión: columnas ajustadas (`tight=True`), acciones siempre visibles a 800 × 480 incluso con error LGPE. Mantener datos agrupados y Guardar/Listo primario; Cancelar no persiste. No expandir la columna verticalmente ni trasladar este estilo automáticamente al comparador aprobado (spec 014).
