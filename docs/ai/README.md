@@ -34,3 +34,7 @@ Las decisiones expresas posteriores del usuario prevalecen sobre estos documento
 No registrar claves, rutas personales innecesarias o transcripciones completas. Mantener aquí acuerdos y evidencia útil; el detalle funcional upstream permanece en su documentación original.
 
 Leyendas Z-A incorporado a la galería y a los adaptadores portátiles de devolución: [spec 011](../specs/011-portable-za.md). Su validación contempla marcas Plus Move; una modificación de nivel ilegal no se repara cambiando movimientos de forma silenciosa. Prueba física pendiente.
+
+## Compilación portátil e identidad
+
+[Guía Mac / Raspberry Pi 5](../portable-build.md): compilación PKHeX, ejecución nativa, dependencias, rutas de datos, acceso Linux y límites del empaquetado. [Spec 016](../specs/016-portable-icon-build-guide.md). Ícono propio en `gui/assets/portable/icon.png`; no sustituye todavía la identidad del cliente Flet/Dock. Pi pendiente de comprobación física.

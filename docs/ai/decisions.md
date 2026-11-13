@@ -146,3 +146,6 @@ Altura ajustada al contenido, cabecera con icono, tarjetas y acción principal v
 Anfitrión/Unirse se elige directamente en botones mutuamente exclusivos, con selección verde. Solo mostrar papeles disponibles en tools; si solo existe Anfitrión, permanece seleccionado y no puede vaciarse. Mantener edición local hasta Guardar y descarte al Cancelar.
 
 Revisión visual del selector de papel: igualar alturas visibles, bordes suaves y radios; eliminar franja inferior del segmento activo y contador redundante LGPE. Se conserva límite de tres caracteres. Verificación nativa y captura 29 en spec 015.
+
+### Ícono y compilación portátil (2026-11-13)
+Ícono PNG transparente generado con imagegen en gui/assets/portable, separado del upstream. La guía docs/portable-build.md es la referencia de preparación Mac/Pi con C6: compilar PKHeX y ejecutar GUI desde fuente. No confundir setup/preflight/deploy_pi del servidor Wi-Fi/Mystery Gift con requisitos de esta GUI. Empaquetador autónomo portátil e integración de ícono macOS pendientes; no afirmar que exportar POKELDN_PORTABLE al compilar queda incrustado en una app. Compilar por plataforma/arquitectura; nunca copiar venv ni binarios Mac a Pi. Mac build comprobado; Pi y launcher Linux aún no ejecutados en hardware.
