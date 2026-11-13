@@ -371,3 +371,35 @@ def test_trainer_refresh_does_not_replace_active_query():
     assert ui.trainer.value == 'base'
     assert ui.trainer.text == 'Base de pokeLDN'
     ui.model.set_trainer.assert_not_called()
+
+
+def test_connection_role_toggle_only_saves_when_confirmed():
+    ui = view()
+    ui.model.tools = {key: SimpleNamespace(fields=[]) for key in ('host', 'join')}
+    ui.model.configure = Mock()
+    ui._connection(None)
+    dialog = ui.page.show_dialog.call_args.args[0]
+    role = dialog.content.content.controls[0].content.controls[0].controls[1]
+    assert [segment.value for segment in role.segments] == ['host', 'join']
+    assert role.selected == ['host']
+    assert not role.allow_empty_selection and not role.allow_multiple_selection
+    role.selected = ['join']
+    dialog.actions[0].on_click(None)
+    ui.model.configure.assert_not_called()
+    ui._connection(None)
+    dialog = ui.page.show_dialog.call_args.args[0]
+    role = dialog.content.content.controls[0].content.controls[0].controls[1]
+    assert role.selected == ['host']
+    role.selected = ['join']
+    asyncio.run(dialog.actions[1].on_click(None))
+    ui.model.configure.assert_called_once_with('join', 'scarlet', '')
+
+
+def test_connection_single_role_remains_selected():
+    ui = view()
+    ui.model.tools = {'host': SimpleNamespace(fields=[])}
+    ui._connection(None)
+    dialog = ui.page.show_dialog.call_args.args[0]
+    role = dialog.content.content.controls[0].content.controls[0].controls[1]
+    assert [segment.value for segment in role.segments] == ['host']
+    assert role.selected == ['host'] and not role.allow_empty_selection

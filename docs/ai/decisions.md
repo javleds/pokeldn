@@ -141,3 +141,8 @@ No desmontar la galería al seleccionar un juego mientras haya llamadas de foco/
 
 ### Modales de entrenador y conexión (spec 014)
 Altura ajustada al contenido, cabecera con icono, tarjetas y acción principal verde. Entrenador destaca nombre/sexo/idioma y dos IDs visibles, sin cambiar conversiones. Conexión agrupa papel/código en fila cuando no requiere versión; con versión agrupa papel/versión. Conserva leyenda, preview, validación LGPE y Cancelar sin guardar. Comparación permanece intacta. Capturas 24–27 en references/ui-polish; comprobación nativa con datos demo, sin intercambios.
+
+### Papel con selector segmentado (spec 015)
+Anfitrión/Unirse se elige directamente en botones mutuamente exclusivos, con selección verde. Solo mostrar papeles disponibles en tools; si solo existe Anfitrión, permanece seleccionado y no puede vaciarse. Mantener edición local hasta Guardar y descarte al Cancelar.
+
+Revisión visual del selector de papel: igualar alturas visibles, bordes suaves y radios; eliminar franja inferior del segmento activo y contador redundante LGPE. Se conserva límite de tres caracteres. Verificación nativa y captura 29 en spec 015.

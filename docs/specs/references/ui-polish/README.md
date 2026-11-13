@@ -52,3 +52,7 @@ Las recomendaciones y límites están en [spec 013](../../013-portable-ui-polish
 - [Error LGPE con acciones accesibles](27-modal-conexion-error.png)
 
 Capturas nativas con perfiles de demostración, sin intercambio físico. Sustituyen la propuesta visual anterior de conexión.
+
+- [Selector directo Anfitrión / Unirse](28-selector-papel.png) (spec 015; revisión nativa sin guardar cambios ni iniciar intercambio).
+
+- [Conexión: alturas y relleno corregidos](29-conexion-alturas-alineadas.png), sustituye visualmente la captura 28.

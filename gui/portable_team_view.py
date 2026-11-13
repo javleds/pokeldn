@@ -840,14 +840,27 @@ class TeamView:
 
     def _connection(self, e):
         m = self.model
-        role = self.dropdown([(key, "Anfitrión" if key == "host" else "Unirse") for key in m.tools],
-                             m.role, lambda e: None, search=False)
+        role = ft.SegmentedButton(
+            segments=[ft.Segment(value=key, label="Anfitrión" if key == "host" else "Unirse")
+                      for key in m.tools],
+            selected=[m.role], allow_empty_selection=False, allow_multiple_selection=False,
+            show_selected_icon=False, height=40, padding=0,
+            style=ft.ButtonStyle(
+                bgcolor={ft.ControlState.SELECTED: GREEN, ft.ControlState.DEFAULT: "#FFFFFF"},
+                color={ft.ControlState.SELECTED: "#FFFFFF", ft.ControlState.DEFAULT: INK},
+                side=ft.BorderSide(1, "#B3BABB"), padding=ft.Padding(8, 0, 8, 0),
+                visual_density=ft.VisualDensity.STANDARD,
+                text_style=ft.TextStyle(size=14), shape=ft.RoundedRectangleBorder(radius=8)))
         versions = next((f.choices for tool in m.tools.values() for f in tool.fields if f.key == "--version"), ())
         version = self.dropdown(versions, m.version, lambda e: None, search=False)
         is_lgpe = m.game == 'lgpe'
         code = ft.TextField(value=m.code,
-                            text_size=18, color=INK, bgcolor="#FFFFFF", border_radius=9,
-                            content_padding=ft.Padding(12, 10, 12, 10),
+                            text_size=16, color=INK, bgcolor="#FFFFFF", border_radius=8,
+                            # InputDecorator reserves 8 px below the hidden counter in this client.
+                            # 48 total keeps the visible field aligned with the 40 px role control.
+                            height=48, dense=True, counter="",
+                            border_color="#B3BABB", focused_border_color=CYAN,
+                            content_padding=ft.Padding(12, 12, 12, 12),
                             max_length=3 if is_lgpe else None,
                             keyboard_type=ft.KeyboardType.NUMBER if is_lgpe else None)
         preview = text('', 13)
@@ -893,7 +906,7 @@ class TeamView:
         async def save(e):
             if not m.busy:
                 try:
-                    m.configure(role.value, version.value or m.version, code.value)
+                    m.configure(role.selected[0], version.value or m.version, code.value)
                 except ValueError as exc:
                     if not is_lgpe:
                         raise
