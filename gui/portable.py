@@ -7,6 +7,7 @@ from pathlib import Path
 import flet as ft
 
 from gui import theme
+from gui.portable_resources import ResourceOverlay
 from gui.portable_setup import MAX_KEYS, Setup, shared_setup
 from pokeldn.app.i18n import t as tr
 from pokeldn.app.catalog import GAMES
@@ -91,6 +92,8 @@ class PortableView:
             self.body,
             ft.Container(self.footer, height=24, alignment=ft.Alignment.CENTER),
         ], spacing=6, expand=True))
+        self.resources = ResourceOverlay(page)
+        self.control = ft.Stack([self.control, self.resources.control], expand=True)
         self.render(update=False)
 
     def header_focus(self, control):
@@ -165,6 +168,9 @@ class PortableView:
             await (target if not target.disabled else enabled[0]).focus()
 
     async def key(self, e):
+        if e.key == "?":
+            self.resources.toggle()
+            return
         if self.screen == 'team':
             # Native input/dropdown navigation owns arrows; Escape must not dismiss
             # a confirmation and navigate away in the same event.
@@ -576,8 +582,12 @@ async def main(page: ft.Page):
         view.changed()
     setup.listeners.add(changed)
     async def disconnect(e):
+        view.resources.connected = False
+        view.resources.sync()
         setup.listeners.discard(changed)
     async def reconnect(e):
+        view.resources.connected = True
+        view.resources.sync()
         setup.listeners.add(changed)
         view.changed()
     page.on_disconnect = disconnect

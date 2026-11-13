@@ -11,3 +11,4 @@ unicorn==2.1.4
 websockets==17.4
 certifi==2026.10.23
 bleak==3.0.2
+psutil==7.1.3
