@@ -115,14 +115,93 @@ def test_slow_old_result_cannot_validate_new_revision(team):
 
 def test_all_occupied_slots_required_empty_slots_ignored(team):
     prepare(team, 0)
-    prepare(team, 5)
+    prepare(team, 1)
     assert team.can_start
-    team.add(3)
+    team.add(2)
+    assert team.can_start  # No species: this is not an offer yet.
+    team.edit(2, 'species', 7)
     assert not team.can_start
-    team.clear(3)
+    team.clear(2)
     assert team.can_start
     team.clear()
     assert not team.can_start
+
+
+def test_boxes_unlock_only_after_species_and_blank_drafts_do_not_validate(team):
+    assert [team.slot_available(i) for i in range(6)] == [True, False, False, False, False, False]
+    team.edit(0, 'nickname', 'Shell')
+    asyncio.run(team.validate_all())
+    assert team.service.count == 0 and team.states[0] == 'empty' and team.errors[0] == ''
+    with pytest.raises(ValueError, match='anterior'):
+        team.edit(5, 'species', 7)
+    for index in range(6):
+        assert team.slot_available(index)
+        team.edit(index, 'species', index + 1)
+    assert all(team.slot_available(i) for i in range(6))
+    assert team.slots[0]['nickname'] == 'Shell'
+
+
+@pytest.mark.parametrize('removed', [0, 1, 2])
+def test_clear_compacts_drafts_and_keeps_current_validation(team, removed):
+    for index in range(3):
+        team.edit(index, 'species', index + 1)
+        team.edit(index, 'nickname', f'Pokemon {index}')
+    asyncio.run(team.validate_all())
+    before = [dict(slot) for slot in team.slots[:3]]
+    files = [result.get('file') for result in team.results[:3]]
+    team.clear(removed)
+    assert team.slots[:2] == [slot for i, slot in enumerate(before) if i != removed]
+    assert team.slots[2:] == [None] * 4
+    assert [r['file'] for r in team.results[:2]] == [f for i, f in enumerate(files) if i != removed]
+    assert team.can_start
+    assert team.service.count == 3
+    restored = Team('sv', team.setup, store=team.store, service=team.service)
+    assert restored.slots == team.slots
+
+
+def test_clearing_species_compacts_like_deleting_box(team):
+    prepare(team)
+    team.edit(1, 'species', 7)
+    team.edit(0, 'species', None)
+    assert team.slots[0]['species'] == 7
+    assert team.slots[1:] == [None] * 5
+
+
+def test_old_sparse_saved_team_is_ordered_without_losing_draft_fields(team):
+    first = dict(species=7, nickname='Shell', level='10', options={})
+    second = dict(species=25, nickname='Spark', level='20', options={})
+    unfinished = dict(species=0, nickname='Draft', level='30', options={})
+    team.store.save(dict(slots=[None, first, unfinished, None, second, None]))
+    restored = Team('sv', team.setup, store=team.store, service=team.service)
+    assert restored.slots == [first, second, unfinished, None, None, None]
+    assert restored.states == ['pending', 'pending', 'empty', 'empty', 'empty', 'empty']
+
+
+def test_late_validation_cannot_overwrite_compacted_box(team):
+    entered, release = threading.Event(), threading.Event()
+    make = team.service.make
+    def slow(*args):
+        if args[1] == 1:
+            entered.set()
+            release.wait(3)
+        return make(*args)
+    team.service.make = slow
+    team.edit(0, 'species', 1)
+    team.edit(1, 'species', 7)
+    async def scenario():
+        await team.validate(1)
+        survivor = team.results[1]['file']
+        task = asyncio.create_task(team.validate(0))
+        await asyncio.to_thread(entered.wait, 3)
+        try:
+            team.clear(0)
+        finally:
+            release.set()
+        await task
+        assert team.slots[0]['species'] == 7
+        assert team.results[0]['file'] == survivor
+        assert team.states[0] == 'legal' and team.can_start
+    asyncio.run(scenario())
 
 
 def test_trainer_change_preserves_base_and_invalidates(team):

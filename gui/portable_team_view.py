@@ -57,9 +57,8 @@ class TeamView:
         self.adapter = SimpleNamespace(settings=controller.settings, ui=lambda fn: on_ui(self.page, fn))
         self.back = self.icon(ft.Icons.ARROW_BACK, "Volver a juegos", self._back)
         self.connection = ft.TextButton("Anfitrión · Configurar", on_click=self._connection)
-        self.trainer = self.dropdown([], None, self._trainer_selected, clear_value="base")
-        self.trainer_info = self.icon(ft.Icons.BADGE_OUTLINED, "Datos del entrenador", self._trainer_info)
-        self.find = self.icon(ft.Icons.PERSON_SEARCH, "Encontrar mi entrenador", self._find_trainer, GREEN)
+        self.trainer_model = controller
+        self._init_trainer()
         self.clear_all = self.icon(ft.Icons.DELETE_OUTLINE, "Vaciar equipo", lambda e: self._confirm_clear(None), RED)
         for button in (self.trainer_info, self.find, self.clear_all):
             button.height = 40
@@ -84,7 +83,7 @@ class TeamView:
                 visual_density=ft.VisualDensity.COMPACT,
                 tooltip="Aplicar máximos a esta caja. Desmarcar vuelve a Automático.",
                 on_change=lambda e, group=group: self._toggle_max(group, e.control.value))
-        self.session_title = text("Intercambios · Equipo", 16, weight=ft.FontWeight.W_700)
+        self.session_title = text("Equipo", 16, weight=ft.FontWeight.W_700)
         from gui.portable_received import MODES
         self.mode_menu = ft.PopupMenuButton(content=ft.Row([self.session_title,
             ft.Icon(ft.Icons.ARROW_DROP_DOWN, color=INK)], spacing=4), tooltip='Modalidad de intercambio',
@@ -92,19 +91,48 @@ class TeamView:
                 on_click=lambda e, key=key: self.shell.open_trade_mode(key)) for key, title in MODES.items()])
         self.session = ft.Column([], spacing=10, expand=True, visible=False, scroll=ft.ScrollMode.AUTO)
         self.status = text("Cargando datos Pokémon…", 12, max_lines=2)
+        self.status_panel = ft.Container(self.status, padding=ft.Padding(8, 4, 8, 4), border_radius=8)
+        self.editor_tabs = ft.Row([*self.tab_buttons, ft.Container(expand=True), *self.max_checks.values(), self.clear_one], height=30, spacing=3)
+        self.slot_panel = ft.Container(self.slot_row, border_radius=10)
         self.control = ft.Column([
-            ft.Row([self.back, self.mode_menu,
-                    ft.Container(expand=True), self.connection], height=32, spacing=6),
-            ft.Row([labeled("Entrenador", self.trainer, width=265), self.trainer_info, self.find,
-                    ft.Container(expand=True), self.loader, self.cancel, self.logs, self.clear_all],
-                   height=59, spacing=8, vertical_alignment=ft.CrossAxisAlignment.END),
-            self.slot_row,
-            ft.Row([*self.tab_buttons, ft.Container(expand=True), *self.max_checks.values(), self.clear_one], height=30, spacing=3),
-            self.editor, self.session, self.status,
+            self._trade_header(),
+            self.slot_panel,
+            self.editor_tabs,
+            self.editor, self.session, self.status_panel,
         ], spacing=7, expand=True)
         self.model.listeners.add(self._notified)
         self._draw_editor()
         self.refresh(update=False)
+
+    def _init_trainer(self):
+        self.last_profiles = None
+        self.trainer = self.dropdown([], None, self._trainer_selected, clear_value='base')
+        self.trainer.expand = True
+        self.trainer.tooltip = 'Entrenador de la oferta · El recibido conserva su propietario original'
+        self.trainer_info = self.icon(ft.Icons.BADGE_OUTLINED, 'Datos del entrenador', self._trainer_info)
+        self.find = self.icon(ft.Icons.PERSON_SEARCH, 'Encontrar mi entrenador', self._find_trainer, GREEN)
+
+    def _trade_header(self):
+        self.connection.tooltip = 'Configurar conexión local'
+        self.connection.height = self.mode_menu.height = 40
+        trainer = ft.Row([self.trainer, self.trainer_info, self.find], spacing=2)
+        return ft.Row([self.back, labeled('Modalidad', self.mode_menu, width=150),
+                       labeled('Entrenador', trainer, expand=True),
+                       labeled('Conexión', self.connection, width=105)], spacing=8, height=60,
+                      vertical_alignment=ft.CrossAxisAlignment.END)
+
+    def _refresh_trainer(self, locked):
+        m = self.trainer_model
+        choices = [('base', 'Base de pokeLDN'), *[(key, f"{item['ot']} · {key[:6]}")
+                   for key, item in m.profiles.items() if key != 'base']]
+        if choices != self.last_profiles:
+            self._set_choices(self.trainer, choices)
+            self.last_profiles = choices
+        if not self.trainer.portable_searching:
+            self.trainer.value = m.selected_trainer
+        self.trainer.data = m.selected_trainer
+        self.trainer.disabled = self.trainer_info.disabled = self.find.disabled = locked
+        self.trainer_info.opacity = self.find.opacity = 0.4 if locked else 1
 
     def icon(self, icon, tooltip, callback, color=INK):
         return ft.IconButton(icon, tooltip=tooltip, on_click=callback, icon_size=21, width=36, height=40,
@@ -246,21 +274,15 @@ class TeamView:
                                    shape=ft.RoundedRectangleBorder(radius=9)))
             self.slot_buttons.append(button)
             controls.append(button)
-        return ft.Row([*controls, self.start], spacing=7, height=58)
+        self.session_spacer = ft.Container(expand=True, visible=False)
+        return ft.Row([self.session_spacer, *controls, self.start, self.loader, self.cancel, self.logs, self.clear_all], spacing=5, height=58)
 
     def refresh(self, update=True):
         m = self.model
         if self.basic_content is not None and self.tab == "basic" and m.slots[self.selected]:
             self._sync_move_choices()
-        profile_choices = [("base", "Base de pokeLDN"), *[(key, f"{item['ot']} · {key[:6]}")
-                            for key, item in m.profiles.items() if key != "base"]]
-        if profile_choices != self.last_profiles:
-            self.trainer.options = [ft.DropdownOption(key=key, text=name) for key, name in profile_choices]
-            self.last_profiles = profile_choices
-        if not self.trainer.portable_searching:
-            self.trainer.value = m.selected_trainer
-        self.trainer.data = m.selected_trainer
-        self.connection.content = f"{'Anfitrión' if m.role == 'host' else 'Unirse'} · Configurar"
+        self._refresh_trainer(m.busy)
+        self.connection.content = 'Anfitrión' if m.role == 'host' else 'Unirse'
         for control in [self.back, self.connection, self.trainer, self.trainer_info, self.find,
                         self.clear_all, self.clear_one, *self.slot_buttons, *self.tab_buttons,
                         *self.editor_controls]:
@@ -272,6 +294,7 @@ class TeamView:
                 if update and button.parent is not None:
                     button.update()
         self.start.disabled = not m.can_start
+        self.start.opacity = 0.4 if self.start.disabled else 1
         self.start.visible = not m.busy
         self.loader.visible = m.busy
         self.cancel.visible = m.busy
@@ -282,29 +305,57 @@ class TeamView:
         discovery = bool(getattr(m, 'discovering', False))
         self.mode_menu.disabled = m.busy
         draft = m.slots[self.selected]
+        first_empty = next((i for i, slot in enumerate(m.slots) if not (slot or {}).get('species')), 5)
+        for i, button in enumerate(self.slot_buttons):
+            button.disabled = m.busy or i > first_empty
+            button.opacity = 0.4 if i > first_empty else 1
+        self.clear_all.disabled = m.busy or not any(m.slots)
+        self.clear_one.disabled = m.busy or draft is None
+        self.clear_all.opacity = 0.4 if self.clear_all.disabled else 1
+        self.clear_one.opacity = 0.4 if self.clear_one.disabled else 1
+        for control in [*self.tab_buttons[1:], *self.editor_controls[1:]]:
+            control.disabled = m.busy or not (draft or {}).get('species')
         for group, checkbox in self.max_checks.items():
             maximum = self._maximum(group)
-            checkbox.visible = self.tab == 'basic' and draft is not None and not discovery
+            checkbox.visible = self.tab == 'basic' and not discovery
             checkbox.disabled = m.busy or maximum is None or not (draft or {}).get('species')
             chosen = (draft or {}).get('options', {}).get(group)
             checkbox.value = (chosen == maximum if group == 'effort' else str(chosen) == str(maximum)) and maximum is not None
         kind = m.metadata.get(self.selected, {}).get('effort', {}).get('kind')
         self.max_checks['effort'].label = {'avs': 'AVs máx.', 'gvs': 'Esfuerzo máx.'}.get(kind, 'EVs máx.')
-        self.session_title.value = 'Identificar entrenador' if discovery else 'Intercambios · Equipo'
+        self.session_title.value = 'Identificar' if discovery else 'Equipo'
         self.editor.visible = not m.busy and not discovery
-        self.slot_row.visible = not discovery
-        self.control.controls[3].visible = not discovery
+        self.session_spacer.visible = discovery
+        self.slot_row.height = 44 if discovery else 58
+        self.slot_panel.padding = ft.Padding(10, 2, 4, 2) if discovery else 0
+        self.slot_panel.bgcolor = ('#F4DADF' if m.error else '#D7F1EE' if m.busy else '#E4E7E5') if discovery else None
+        if discovery:
+            phase = ('La sesión requiere atención' if m.error else
+                     'Preparando oferta · Aún no busca consola' if m.phase == 'preparing' else
+                     'Devolución confirmada' if m.completed >= 2 else
+                     'Pokémon recibido · Devolución en curso' if m.completed and m.busy else
+                     'Recepción confirmada' if m.completed else
+                     'Cerrando la sesión' if m.phase == 'stopping' else
+                     'Proceso iniciado · Esperando tu Pokémon' if m.busy else 'Sesión finalizada')
+            self.session_spacer.content = text(phase, 15, weight=ft.FontWeight.W_600)
+        for button in self.slot_buttons:
+            button.visible = not discovery
+        self.editor_tabs.visible = not discovery
         self.start.visible = not m.busy and not discovery
         self.clear_all.visible = not m.busy and not discovery
         self.session.visible = m.busy or discovery
         if discovery:
             self._discovery_view()
         elif m.busy:
-            self.session.controls = [text("Buscando entrenador…" if getattr(m, "discovering", False)
-                                          else "Intercambio en curso", 23, weight=ft.FontWeight.W_700),
-                                     text({"preparing": "Preparando ofertas y comprobando legalidad…",
-                                           "running": "Esperando confirmaciones de tu consola…",
-                                           "stopping": "Cancelación solicitada; esperando cierre…"}.get(m.phase, m.phase), 15), text("No desconectes la placa. Confirma el intercambio en tu consola.", 14)]
+            heading, detail = {
+                'preparing': ('Preparando intercambio', 'Comprobando ofertas y conexión. Aún no busca consola.'),
+                'running': ('Proceso iniciado', 'Esperando confirmaciones de tu consola. Si no conecta, revisa el código.'),
+                'stopping': ('Cerrando la sesión', 'Cancelación solicitada. Espera antes de desconectar la placa.'),
+            }.get(m.phase, ('Intercambio en curso', 'Confirma el intercambio en tu consola.'))
+            self.session.controls = [ft.Container(ft.Column([
+                text(heading, 23, weight=ft.FontWeight.W_700), text(detail, 14),
+                text(f'{m.completed} de {len(m.active_slots)} intercambios confirmados', 13)
+            ], spacing=10), bgcolor='#D7F1EE', border_radius=14, padding=18)]
         names = {int(n["id"]): n["name"] for n in self.species_names}
         active = m.active_slots[m.completed] if m.busy and m.completed < len(m.active_slots) else None
         for i, slot in enumerate(m.slots):
@@ -325,11 +376,16 @@ class TeamView:
                 mark.content = ft.Icon(icon, size=13, color=GREEN if state == "legal" else RED
                                        if state in ("invalid", "error") else MUTED)
                 self.slot_buttons[i].tooltip = f"Caja {i + 1}"
+                if i > first_empty:
+                    mark.content = ft.Icon(ft.Icons.LOCK_OUTLINE, size=13, color=MUTED)
+                    self.slot_buttons[i].tooltip = 'Elige especie en la caja anterior para habilitarla'
             wanted = (int((slot or {}).get("species") or 0), bool((slot or {}).get("shiny")),
                       int((slot or {}).get("options", {}).get("form") or 0))
             if getattr(self.slot_sprites[i], "portable_wanted", None) != wanted:
                 self.slot_sprites[i].portable_wanted = wanted
                 self.slot_sprites[i].show(*wanted[:2], form=wanted[2], update=False)
+                if not wanted[0]:
+                    self.slot_sprites[i].frame.content = ft.Icon(ft.Icons.ADD, size=24, color=MUTED)
         portrait = getattr(self, "editor_sprite", None)
         if portrait is not None and self.tab == "basic":
             draft = m.slots[self.selected] or {}
@@ -359,6 +415,7 @@ class TeamView:
             self.status.value, self.status.color = "Selecciona una caja y elige una especie.", MUTED
         if discovery and not error:
             self.status.value = 'Identificación · Devolución del original sin modificaciones' if m.return_original else 'Identificación · Solo recepción'
+        self.status_panel.bgcolor = '#F4DADF' if error else '#D6EEE0' if self.status.color == GREEN else None
         if self.logs_list is not None:
             self.logs_list.controls = [ft.Text(line, size=12, color="#EAF2EC", selectable=True)
                                        for line in m.logs]
@@ -373,13 +430,7 @@ class TeamView:
         for i, button in enumerate(self.tab_buttons):
             button.style.bgcolor = INK if ("basic", "stats", "advanced")[i] == self.tab else PAPER
             button.style.color = "white" if ("basic", "stats", "advanced")[i] == self.tab else INK
-        draft = self.model.slots[self.selected]
-        if draft is None:
-            self.editor.content = ft.Column([text(f"Caja {self.selected + 1} vacía", 20),
-                ft.Button("Crear Pokémon", on_click=self._add, icon=ft.Icons.ADD)],
-                alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
-            self.editor_controls.append(self.editor.content.controls[1])
-            return
+        draft = self.model.slots[self.selected] or {'level': '100', 'nickname': '', 'shiny': False, 'options': {}}
         if self.tab == "basic":
             if self.basic_content is None:
                 self.basic_content = self._basic(draft)
@@ -418,6 +469,14 @@ class TeamView:
                 callback(value)
             else:
                 self.model.edit(self.selected, key, value, option=option)
+                if key == 'species':
+                    self.selected = min(self.selected, next((i for i, s in enumerate(self.model.slots)
+                                                            if not (s or {}).get('species')), 5))
+                    self.editor_cache.clear()
+                    self._draw_editor()
+                    self.refresh()
+                    if not value:
+                        self.page.run_task(self.model.validate_all)
                 self.page.run_task(self._commit, self.selected, key in ("species", "form"))
         control = self.dropdown(pairs, current if current is not None else "", selected,
                                 clear_value="" if default else None)
@@ -598,11 +657,12 @@ class TeamView:
         self.refresh()
 
     def _select_slot(self, index):
-        if self.model.busy or index == self.selected:
+        first_empty = next((i for i, slot in enumerate(self.model.slots) if not (slot or {}).get('species')), 5)
+        if self.model.busy or index == self.selected or index > first_empty:
             return
         self.selected = index
-        if self.model.slots[index] is None:
-            self.model.add(index)
+        if not (self.model.slots[index] or {}).get('species'):
+            self.tab = 'basic'
         self._draw_editor()
         self.refresh()
         if self.tab != "basic" and self.model.slots[index] and index not in self.model.metadata:
@@ -625,11 +685,6 @@ class TeamView:
             self.tab = tab
             self._draw_editor()
             self.refresh()
-
-    def _add(self, e):
-        self.model.add(self.selected)
-        self._draw_editor()
-        self.refresh()
 
     def _maximum(self, group):
         if group == "friendship":
@@ -682,20 +737,25 @@ class TeamView:
         def clear(e):
             if not self.model.busy:
                 self.model.clear(index)
+                self.selected = min(self.selected, next((i for i, s in enumerate(self.model.slots)
+                                                        if not (s or {}).get('species')), 5))
+                self.tab = 'basic'
+                self.editor_cache.clear()
                 self._draw_editor()
                 self.refresh()
+                self.page.run_task(self.model.validate_all)
             self._dismiss()
         self._dialog("¿Vaciar el equipo?" if index is None else f"¿Vaciar la caja {index + 1}?",
                      text("Se borrarán los borradores seleccionados. Los entrenadores se conservan."),
                      [ft.TextButton("Cancelar", on_click=self._dismiss), ft.TextButton("Vaciar", on_click=clear)])
 
     def _trainer_selected(self, e):
-        if not self.model.busy:
-            self.model.set_trainer(e.control.value)
-            self.page.run_task(self.model.validate_all)
+        if not self.model.busy and not getattr(self.model, 'active', False):
+            self.trainer_model.set_trainer(e.control.value)
+            self.page.run_task(self.trainer_model.validate_all)
 
     def _trainer_info(self, e):
-        trainer = self.model.trainer
+        trainer = self.trainer_model.trainer
         tid, sid = console_trainer.shown(self.model.game, int(trainer["tid"]), int(trainer["sid"]))
         language = {1: "Japonés", 2: "Inglés", 3: "Francés", 4: "Italiano", 5: "Alemán",
                     7: "Español", 8: "Coreano", 9: "Chino simplificado", 10: "Chino tradicional", 11: "Español latinoamericano"}.get(

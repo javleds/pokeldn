@@ -1,5 +1,6 @@
 """Compact receive/edit/return views sharing the established Equipo controls."""
 import asyncio
+from copy import deepcopy
 from types import SimpleNamespace
 
 import flet as ft
@@ -15,7 +16,7 @@ MODES = tuple(MODE_LABELS.items())
 class ReceivedView(TeamView):
     """Presentation only: the controller owns immutable originals and return decisions."""
 
-    def __init__(self, shell, controller):
+    def __init__(self, shell, controller, trainer_model=None):
         self.shell, self.page, self.model = shell, shell.page, controller
         self.selected, self.tab = 0, 'basic'
         self.species_names, self.move_names, self.nature_names = [], [], []
@@ -28,6 +29,8 @@ class ReceivedView(TeamView):
         self._editor_identity = None
         self._portrait_identity = None
         self.adapter = SimpleNamespace(settings=controller.settings, ui=lambda fn: on_ui(self.page, fn))
+        self.trainer_model = trainer_model or controller
+        self._init_trainer()
         self.back = self.icon(ft.Icons.ARROW_BACK, 'Volver a juegos', self._back)
         self.mode_menu = ft.PopupMenuButton(
             content=ft.Row([text(dict(MODES)[controller.mode], 17, weight=ft.FontWeight.W_700),
@@ -45,7 +48,7 @@ class ReceivedView(TeamView):
         self.comparison = self.icon(ft.Icons.COMPARE_ARROWS, 'Comparar datos del Pokémon', self._comparison)
         self.details = self.icon(ft.Icons.FACT_CHECK_OUTLINED, 'Detalles de legalidad', self._details)
         self.loader = ft.ProgressRing(width=23, height=23, stroke_width=3, color=CYAN)
-        self.phase_label = text('', 14, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS)
+        self.phase_label = text('', 15, weight=ft.FontWeight.W_600, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS)
         self.status = text('', 12, max_lines=2)
         self.editor = ft.Container(expand=True)
         for key, title in (('basic', 'Básico'), ('stats', 'EV / IV'), ('advanced', 'Avanzado')):
@@ -64,14 +67,27 @@ class ReceivedView(TeamView):
         self.card = ft.Container(padding=12, border_radius=12, bgcolor='#E4E7E5')
         self.intro = self._configuration()
         self.body = ft.Column([], spacing=10, expand=True)
+        self.activity_bar = ft.Container(ft.Row([self.loader, ft.Container(self.phase_label, expand=True),
+            self.original, self.edited, self.comparison, self.details, self.logs, self.cancel,
+            self.new_run, self.start], height=40, spacing=5), padding=ft.Padding(10, 2, 4, 2), border_radius=10)
         self.control = ft.Column([
-            ft.Row([self.back, self.mode_menu, ft.Container(expand=True), self.connection], height=36, spacing=5),
-            ft.Row([ft.Container(self.phase_label, expand=True), self.loader, self.original, self.edited,
-                    self.comparison, self.details, self.logs, self.cancel, self.new_run, self.start], height=40, spacing=5),
+            self._trade_header(), self.activity_bar,
             self.body, self.status,
         ], spacing=7, expand=True)
         self.model.listeners.add(self._notified)
         self.refresh(update=False)
+
+    async def _start(self, e):
+        if self.model.active:
+            return
+        self.model.profiles = deepcopy(self.trainer_model.profiles)
+        self.model.selected_trainer = self.trainer_model.selected_trainer
+        await super()._start(e)
+
+    def _find_trainer(self, e):
+        if not self.model.active:
+            self.shell.open_trade_mode('team')
+            self.shell.team_view._find_trainer(e)
 
     async def load(self):
         try:
@@ -111,7 +127,17 @@ class ReceivedView(TeamView):
             'modifier': 'Al recibir tu Pokémon se abrirá el editor. Puedes devolver una copia legal o el original intacto.',
             'validator': 'Comprueba la legalidad y devuelve el original sin modificarlo. El informe completo queda disponible en Detalles.',
         }
-        controls = [text(hints[m.mode], 17)]
+        icons = {'evolution': ft.Icons.AUTO_AWESOME, 'level': ft.Icons.TRENDING_UP,
+                 'nature': ft.Icons.SPA_OUTLINED, 'effort': ft.Icons.BAR_CHART,
+                 'modifier': ft.Icons.TUNE, 'validator': ft.Icons.VERIFIED_OUTLINED}
+        titles = {'evolution': 'Evoluciona por intercambio', 'level': 'Un nuevo nivel',
+                  'nature': 'Elige su naturaleza', 'effort': 'Distribuye su esfuerzo',
+                  'modifier': 'Tu Pokémon, a tu medida', 'validator': 'Comprueba su legalidad'}
+        controls = [ft.Row([
+            ft.Container(ft.Icon(icons[m.mode], size=30, color=GREEN), width=56, height=56,
+                         bgcolor='#D6EEE0', border_radius=14, alignment=ft.Alignment.CENTER),
+            ft.Column([text(titles[m.mode], 20, weight=ft.FontWeight.W_700),
+                       text(hints[m.mode], 13, max_lines=3)], spacing=4, expand=True)], spacing=14)]
         self.param_controls = []
         if m.mode == 'level':
             control = ft.TextField(value=str(m.params.get('level', '100')), width=150, height=44,
@@ -138,17 +164,24 @@ class ReceivedView(TeamView):
             controls.append(ft.Row(fields, spacing=8))
             limit = 'AVs · 0–200 por estadística' if m.game == 'lgpe' else 'Esfuerzo · 0–10 por estadística' if m.game == 'pla' else 'EVs · 0–252 por estadística · 510 en total'
             controls.append(text(limit, 13))
-        controls.append(text('Se enviará primero un Pokémon de cortesía legal. Confirma los intercambios en la misma consola.', 13))
-        return ft.Column(controls, spacing=18)
+        controls.append(ft.Row([ft.Icon(ft.Icons.SWAP_HORIZ, size=18, color=MUTED),
+            ft.Text('Recibir  →  Revisar  →  Devolver · Confirma en la misma consola', size=12, color=MUTED)], spacing=6))
+        return ft.Container(ft.Column(controls, spacing=14, tight=True), padding=18,
+                            border_radius=14, bgcolor='#FFFEF8', border=ft.Border.all(1, '#DEE2DD'))
 
     def _show_card(self):
         m = self.model
         info = m.received_info
         if not info:
             self.card.bgcolor = '#E4E7E5'
-            self.card.content = text('Original recibido · No se pudieron leer sus datos. Consulta el informe.'
-                                     if getattr(m, 'original', None) is not None else
-                                     'Esperando el Pokémon de tu consola…', 18)
+            received = getattr(m, 'original', None) is not None
+            self.card.content = ft.Row([
+                ft.Icon(ft.Icons.CATCHING_POKEMON, size=56, color=MUTED),
+                ft.Column([text('Original recibido' if received else 'Tu Pokémon aparecerá aquí',
+                                20, weight=ft.FontWeight.W_700),
+                           text('No se pudieron leer sus datos. Consulta el informe.' if received else
+                                'Mostraremos su imagen y datos al confirmar la recepción.', 13)],
+                          spacing=8, expand=True)], spacing=18)
             return
         wanted = (info.get('species_id', 0), bool(info.get('shiny')), info.get('form_id', 0))
         if wanted != self._portrait_identity:
@@ -178,7 +211,8 @@ class ReceivedView(TeamView):
         editing = m.mode == 'modifier' and bool(m.slots[0]) and m.phase == 'editing'
         ready_to_return = active and m.phase in ('editing', 'review') and not m.busy
         self.back.disabled = self.mode_menu.disabled = self.connection.disabled = active
-        self.connection.content = f"{'Anfitrión' if m.role == 'host' else 'Unirse'} · Configurar"
+        self.connection.content = 'Anfitrión' if m.role == 'host' else 'Unirse'
+        self._refresh_trainer(active)
         for name in ('settings_button', 'close_button'):
             button = getattr(self.shell, name, None)
             if button is not None:
@@ -189,6 +223,7 @@ class ReceivedView(TeamView):
         self.new_run.disabled = active
         self.start.visible = not active and m.phase == 'idle'
         self.start.disabled = not getattr(m, 'supported', True) or bool(self.loading_error)
+        self.start.opacity = 0.4 if self.start.disabled else 1
         self.loader.visible = active and not ready_to_return
         self.cancel.visible = active
         self.cancel.disabled = m.phase in ('stopping', 'cancelled')
@@ -196,17 +231,22 @@ class ReceivedView(TeamView):
         self.original.visible = ready_to_return
         self.edited.visible = editing
         self.edited.disabled = not m.candidate_legal or m.states[0] in ('pending', 'validating')
+        self.edited.opacity = 0.4 if self.edited.disabled else 1
         self.details.visible = bool(m.report)
         self.comparison.visible = bool(m.received_info)
         for control in self.param_controls:
             control.disabled = active
         self.phase_label.value = {
-            'idle': 'Configura e inicia el intercambio', 'preparing': 'Preparando oferta legal…',
-            'receiving': 'Esperando tu Pokémon…', 'running': 'Esperando tu Pokémon…',
+            'idle': 'Listo para iniciar', 'preparing': 'Preparando oferta · Aún no busca consola',
+            'receiving': 'Proceso iniciado · Esperando tu Pokémon', 'running': 'Proceso iniciado · Esperando tu Pokémon',
             'editing': 'Edita el recibido · Original conservado', 'review': 'Revisa el resultado antes de devolver',
             'returning': 'Confirma la devolución en tu consola', 'done': 'Devolución confirmada',
             'stopping': 'Esperando cierre de sesión…', 'stopped': 'Sesión detenida', 'error': 'La sesión requiere atención',
         }.get(m.phase, m.phase)
+        if m.error and not active:
+            self.phase_label.value = 'No se pudo iniciar' if m.phase == 'idle' else 'La sesión requiere atención'
+        self.activity_bar.bgcolor = '#F4DADF' if m.error else '#D7F1EE' if active else '#E4E7E5'
+        self.phase_label.color = RED if m.error else INK
         if editing:
             identity = getattr(m, 'run_stamp', '')
             if self._editor_identity != identity:

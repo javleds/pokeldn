@@ -117,7 +117,10 @@ class Team:
         except ValueError as exc:
             saved = {}
             self._storage_error = self.error = str(exc)
-        self.slots = saved.get('slots', [None] * 6)
+        saved_slots = saved.get('slots', [None] * 6)
+        drafts = [s for s in saved_slots if s and s.get('species')]
+        drafts += [s for s in saved_slots if s is not None and not s.get('species')]
+        self.slots = drafts + [None] * (6 - len(drafts))
         self.profiles = saved.get('profiles', {})
         self.selected_trainer = saved.get('selected_trainer', 'base')
         if self.selected_trainer not in self.profiles:
@@ -136,7 +139,7 @@ class Team:
                 self.code = ''.join(map(str, code_picks(raw.split(',') if ',' in raw else raw)))
             except ValueError:
                 pass  # Keep an invalid saved value visible for correction.
-        self.states = ['pending' if s is not None else 'empty' for s in self.slots]
+        self.states = ['pending' if s and s.get('species') else 'empty' for s in self.slots]
         self.errors = [''] * 6
         self.results = [{} for _ in range(6)]
 
@@ -148,7 +151,7 @@ class Team:
 
     @property
     def can_start(self):
-        indexes = [i for i, s in enumerate(self.slots) if s is not None]
+        indexes = [i for i, s in enumerate(self.slots) if s and s.get('species')]
         return (not self.busy and not self._storage_error and bool(indexes) and bool(self.tools)
                 and not self.setup.busy and not self.setup.checking and not self.setup.session_busy
                 and all(self.states[i] == 'legal' and self._result_revision[i] == self._revision[i]
@@ -181,11 +184,13 @@ class Team:
 
     def _invalidate(self, index):
         self._revision[index] += 1
-        self.states[index] = 'pending' if self.slots[index] is not None else 'empty'
+        self.states[index] = 'pending' if (self.slots[index] or {}).get('species') else 'empty'
         self.results[index], self.errors[index], self._hashes[index] = {}, '', ''
 
     def add(self, index):
         self._editable()
+        if not self.slot_available(index):
+            raise ValueError('Elige una especie en la caja anterior primero.')
         if self.slots[index] is None:
             self.slots[index] = {'species': 0, 'level': '100', 'nickname': '', 'shiny': False, 'options': {}}
             self._invalidate(index)
@@ -194,15 +199,40 @@ class Team:
 
     def clear(self, index=None):
         self._editable()
-        for i in (range(6) if index is None else [index]):
-            self.slots[i] = None
-            self.metadata.pop(i, None)
-            self._invalidate(i)
+        sources = [] if index is None else [i for i in range(6) if i != index and self.slots[i] is not None]
+        old_revisions = self._revision[:]
+        for name, default in (('slots', None), ('states', 'empty'), ('errors', ''),
+                              ('results', {}), ('_hashes', '')):
+            old = getattr(self, name)
+            setattr(self, name, [old[i] for i in sources] + [deepcopy(default) for _ in range(6 - len(sources))])
+        for name in ('metadata', '_metadata_keys', 'move_options'):
+            old = getattr(self, name)
+            setattr(self, name, {new: old[source] for new, source in enumerate(sources) if source in old})
+        # Never reuse a positional revision: an old worker may still finish after
+        # its Pokémon moved. Only already-current results may follow the draft.
+        for name in ('_result_revision', '_validated_revision'):
+            old = getattr(self, name)
+            setattr(self, name, [old_revisions[new] + 1 if old[source] == old_revisions[source] else -1
+                                for new, source in enumerate(sources)] + [-1] * (6 - len(sources)))
+        self._revision = [revision + 1 for revision in old_revisions]
+        self.states = ['pending' if state == 'validating' else state for state in self.states]
+        self._tasks.clear()
+        self._metadata_tasks.clear()
+        self._move_tasks.clear()
         self.save()
         self.notify()
 
+    def slot_available(self, index):
+        first_empty = next((i for i, draft in enumerate(self.slots) if not (draft or {}).get('species')), 5)
+        return 0 <= index <= first_empty
+
     def edit(self, index, key, value, option=False):
         self._editable()
+        if not self.slot_available(index):
+            raise ValueError('Elige una especie en la caja anterior primero.')
+        if key == 'species' and not value and (self.slots[index] or {}).get('species'):
+            self.clear(index)
+            return
         if self.slots[index] is None:
             self.add(index)
         draft = self.slots[index]
@@ -355,7 +385,7 @@ class Team:
         return ''
 
     async def validate(self, index):
-        if self.busy or self.slots[index] is None:
+        if self.busy or not (self.slots[index] or {}).get('species'):
             return
         revision = self._revision[index]
         if self._validated_revision[index] == revision and self.states[index] in ('legal', 'invalid'):
@@ -369,6 +399,8 @@ class Team:
         await asyncio.shield(task)
 
     async def _validate(self, index, revision):
+        if revision != self._revision[index] or not (self.slots[index] or {}).get('species'):
+            return
         draft, owner, version = self.normalized(self.slots[index]), deepcopy(self.trainer), VERSIONS.get(self.version, '')
         self.states[index], self.errors[index] = 'validating', ''
         self.notify()
@@ -464,7 +496,7 @@ class Team:
         self.return_original = discover and return_original
         self.run_stamp = ''
         self.received_info, self.received_path, self.received_error = None, '', ''
-        self.active_slots = [] if discover else [i for i, s in enumerate(self.slots) if s is not None]
+        self.active_slots = [] if discover else [i for i, s in enumerate(self.slots) if s and s.get('species')]
         self.logs.clear()
         self.notify()
         try:

@@ -10,6 +10,7 @@ from gui.portable_received_view import ReceivedView
 def model(mode='modifier'):
     return SimpleNamespace(
         mode=mode, game='sv', settings=SimpleNamespace(sprites=False), active=False, busy=False,
+        profiles={}, selected_trainer='base', set_trainer=Mock(),
         phase='idle', params={'level': '100', 'nature': 0, 'effort': {}},
         slots=[None] * 6, metadata={}, states=['empty'] * 6, errors=[''] * 6,
         results=[None] * 6, listeners=set(), role='host', version='scarlet', code='', tools={},
@@ -51,6 +52,45 @@ def test_level_and_effort_configuration_does_not_generate():
     field.value = '252'
     field.on_change(SimpleNamespace(control=field))
     ui.model.configure_param.assert_called_once_with('effort', {'hp': '252'})
+
+
+def test_received_trainer_header_is_locked_through_editing():
+    ui = view()
+    assert ui.trainer.options[0].key == 'base'
+    received(ui)
+    assert ui.trainer.disabled and ui.trainer_info.disabled and ui.find.disabled
+    ui._trainer_selected(SimpleNamespace(control=SimpleNamespace(value='base')))
+    ui.model.set_trainer.assert_not_called()
+
+
+def test_received_offer_uses_shared_profile_without_replacing_original_owner():
+    ui = view('level')
+    profile = {'ot': 'Fixture', 'tid': 12, 'sid': 34, 'gender': 0, 'language': 7}
+    ui.trainer_model = SimpleNamespace(profiles={'fixture': profile}, selected_trainer='fixture')
+    ui.model.original_owner = {'ot': 'Original'}
+    asyncio.run(ui._start(None))
+    assert ui.model.profiles == {'fixture': profile}
+    assert ui.model.selected_trainer == 'fixture'
+    assert ui.model.original_owner == {'ot': 'Original'}
+    ui.model.start.assert_awaited_once()
+
+
+def test_activity_bar_distinguishes_preparing_running_and_failed_start():
+    ui = view('level')
+    ui.model.active = ui.model.busy = True
+    ui.model.phase = 'preparing'
+    ui.refresh(update=False)
+    assert 'Aún no busca' in ui.phase_label.value
+    assert ui.loader.visible
+    ui.model.phase = 'running'
+    ui.refresh(update=False)
+    assert 'Proceso iniciado' in ui.phase_label.value
+    ui.model.active = ui.model.busy = False
+    ui.model.phase, ui.model.error = 'error', 'Código no válido'
+    ui.refresh(update=False)
+    assert ui.activity_bar.bgcolor == '#F4DADF'
+    assert ui.status.value == 'Código no válido'
+    assert not ui.loader.visible
 
 
 def received(ui, phase='editing'):

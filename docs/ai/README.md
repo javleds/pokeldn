@@ -27,6 +27,8 @@ El punto de pausa conserva el cierre de la etapa de selectores. Después se impl
 
 ## Cómo mantener este contexto
 
+Pulido de interfaz, cabecera compartida, Equipo secuencial y auditoría visual: [spec 013](../specs/013-portable-ui-polish.md). El usuario considera funcionalmente satisfactoria la versión anterior; esta etapa se concentra en presentación y edición de cajas. [Galería de capturas](../specs/references/ui-polish/README.md).
+
 Las decisiones expresas posteriores del usuario prevalecen sobre estos documentos. Al cambiar una, actualizar su estado y motivo en `decisions.md` y ajustar la especificación si corresponde. Registrar mediciones con hardware, versión, carga y método; no transformar estimaciones en requisitos comprobados.
 
 No registrar claves, rutas personales innecesarias o transcripciones completas. Mantener aquí acuerdos y evidencia útil; el detalle funcional upstream permanece en su documentación original.

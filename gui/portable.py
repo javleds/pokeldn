@@ -499,7 +499,7 @@ class PortableView:
             fn()
         if not controller.active:
             controller.popups = Manager(Dialogs(self.page), call=lambda fn: self.page.run_task(call_ui, fn))
-        self.team_view = ReceivedView(self, controller)
+        self.team_view = ReceivedView(self, controller, trainer_model=shared_team(self.selected_game.key, self.setup))
         self.go('team')
         self.page.run_task(self.team_view.load)
 

@@ -23,10 +23,29 @@ def view():
     return TeamView(shell, model())
 
 
-def test_empty_team_disables_start_and_shows_add():
+def test_empty_team_shows_species_form_without_creating_a_draft():
     ui = view()
     assert ui.start.disabled
-    assert ui.editor.content.controls[0].value == 'Caja 1 vacía'
+    assert len(ui.basic_controls) == 8
+    assert not ui.basic_controls[0].disabled
+    assert all(control.disabled for control in ui.basic_controls[1:])
+    assert [button.disabled for button in ui.slot_buttons] == [False, True, True, True, True, True]
+    ui.model.add.assert_not_called()
+
+
+def test_later_boxes_ignore_selection_until_previous_has_species():
+    ui = view()
+    ui._select_slot(5)
+    assert ui.selected == 0
+    ui.model.slots[0] = {'species': 7, 'level': '5', 'options': {}}
+    ui.refresh(update=False)
+    assert not ui.slot_buttons[1].disabled and ui.slot_buttons[2].disabled
+    controls = tuple(ui.basic_controls)
+    ui.tab = 'advanced'
+    ui._select_slot(1)
+    assert ui.selected == 1 and ui.tab == 'basic' and tuple(ui.basic_controls) == controls
+    assert ui.basic_controls[0].value is None
+    ui.model.add.assert_not_called()
 
 
 def test_status_updates_preserve_editor_controls_and_do_not_validate_on_input():
@@ -294,7 +313,9 @@ def test_discovery_received_view_keeps_actions_and_hides_editor():
     m.received_error = ''
     m.found_trainer = {'ot': 'Fixture'}
     ui.refresh(update=False)
-    assert ui.session.visible and not ui.editor.visible and not ui.slot_row.visible
+    assert ui.session.visible and not ui.editor.visible
+    assert all(not button.visible for button in ui.slot_buttons)
+    assert ui.slot_row.visible and ui.logs.visible and ui.cancel.visible
     assert ui.logs.visible and ui.cancel.visible and ui.loader.visible
     m.busy = False
     m.phase = 'stopped'

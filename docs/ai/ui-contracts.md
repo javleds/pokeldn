@@ -12,6 +12,9 @@ Leer antes de modificar las vistas. Nuevas peticiones son incrementales: no anul
 | Desplegable | Menú acotado 280 × 160; campo visible para escribir; cierre sin elegir. Ancho preferido finito, no infinito |
 | X | Entrenador → Base de pokeLDN; movimiento → Automático; especie → sin selección |
 | Cajas | Reutilizar controles; opciones/cache por configuración; cambiar caja no genera innecesariamente. Estado y primer error corresponden a caja activa |
+| Equipo secuencial | Básico visible sin Crear Pokémon. Solo especie hace que una caja cuente como oferta y habilite la siguiente. Ocupadas + primera vacía accesibles; borrar caja o especie compacta a la izquierda, preservando datos y resultados actuales. Una respuesta asíncrona antigua nunca se aplica a otro índice |
+| Cabecera de intercambio | Modalidad, grupo de entrenador (búsqueda + datos + encontrar) y conexión en una fila compartida. Recibidos usa el perfil para cortesía; conserva siempre el dueño original. Grupo bloqueado durante toda la sesión, incluida edición manual |
+| Actividad visible | Preparación explícita antes del lanzamiento, proceso iniciado separado de consola conectada, error destacado en rojo. No afirmar radio lista o jugador encontrado sin evento que lo confirme. Logs y cancelación permanecen accesibles |
 | Legalidad | Editar no borra valores ilegales; validar al confirmar/salir del campo, no cada tecla. Equipo solo se envía si todas las ofertas actuales son legales; volver a comprobar bytes |
 | Máximos | Checkboxes EV/amistad por caja en fila de pestañas; sin modificar IVs. Desmarcar → Automático. No son reglas persistentes para nuevas especies |
 | Sesión | Edición bloqueada, loader, logs y cancelación con confirmación. Éxito depende de eventos, no solo salida del proceso |
