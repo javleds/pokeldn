@@ -406,3 +406,50 @@ def test_missing_native_original_stops_instead_of_reporting_return_success(launc
         launch._exited(0)
         assert launch.phase != 'done'
     asyncio.run(scenario())
+
+@pytest.mark.parametrize('handler,egg,version,accepted', [
+    (0, False, 44, True), (0, False, 45, True),
+    (1, False, 44, False), (0, True, 44, False), (0, False, 50, False),
+])
+def test_swsh_identifies_first_received_owner_before_finalizing(team, tmp_path, handler, egg, version, accepted):
+    model = Team('swsh', team.setup, store=TeamStore('swsh', tmp_path / 'drafts'), service=team.service)
+    folder = Path(model.settings.received)
+    folder.mkdir()
+    (folder / 'swsh-fixture-1.pk8').write_bytes(b'first original')
+    (folder / 'swsh-fixture-2.pk8').write_bytes(b'second trade')
+    seen = []
+    def owner(game, data):
+        seen.append(data)
+        return dict(ot='Fixture', tid=123, sid=456, gender=0, language=7,
+                    handler=handler, egg=egg, version=version)
+    model.service.owner = owner
+    model.run_stamp = 'fixture'
+    model.discovering = model.busy = model.setup.session_busy = True
+    model.completed = 1
+    async def scenario():
+        model._exited(0)
+        assert model.busy  # Exit waits for PKHeX; no premature failed identification.
+        for _ in range(200):
+            if not model.busy:
+                break
+            await asyncio.sleep(.01)
+        assert not model.busy
+        assert bool(model.profiles) is accepted
+        assert model.phase == ('done' if accepted else 'error')
+        if accepted:
+            assert model.trainer['ot'] == 'Fixture'
+        assert seen == [b'first original']
+    asyncio.run(scenario())
+
+
+def test_received_trainer_result_cannot_cross_sessions(team, tmp_path):
+    folder = tmp_path / 'received'
+    folder.mkdir()
+    (folder / 'sv-old.pk9').write_bytes(b'original')
+    def owner(*args):
+        team.run_stamp = 'new'
+        return dict(ot='Old', tid=1, sid=2, gender=0, language=2, handler=0, egg=False, version=50)
+    team.service.owner = owner
+    team.run_stamp = 'old'
+    asyncio.run(team._learn_received_trainer('old', str(folder)))
+    assert team.found_trainer is None

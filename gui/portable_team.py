@@ -78,6 +78,7 @@ class Team:
     def __init__(self, game, setup, *, store=None, service=None, process_factory=None):
         self.game, self.setup = game, setup
         self.settings = setup.settings
+        self._received_folder = self.settings.received
         self.store = store or TeamStore(game)
         self.service = service or SERVICE
         self.process_factory = process_factory or runner.Process
@@ -496,6 +497,7 @@ class Team:
                 if field.kind == 'code' and (problem := command.code_error(field, values.get(field.key, ''), self.game)):
                     raise ValueError(problem)
             run_settings = deepcopy(self.setup.settings)
+            self._received_folder = run_settings.received
             run_settings.allow_illegal = False
             run_settings.radio = ''  # portable only uses the configured C6
             # Keep selected original trainer and use the matching displayed ID representation in the launcher.
@@ -544,12 +546,36 @@ class Team:
                 self.found_trainer = found
         self.notify()
 
+    async def _learn_received_trainer(self, stamp, folder):
+        if self.found_trainer or self.game not in console_trainer.GAME_VERSIONS:
+            return
+        files = await asyncio.to_thread(received.session_files, folder, stamp)
+        if not files:
+            return
+        try:
+            data = await asyncio.to_thread(Path(files[0]).read_bytes)
+            owner = await asyncio.to_thread(self.service.owner, self.game, data)
+            found = console_trainer.own(self.game, owner)
+        except (OSError, ValueError, pokemon.BuilderError):
+            return  # A growing/unreadable record is retried at process exit.
+        if self.run_stamp == stamp and not self.found_trainer and found:
+            self.found_trainer = dict(found, game=self.game, source='pokemon')
+
+    async def _finish_discovery(self, stamp, code):
+        try:
+            await self._learn_received_trainer(stamp, self._received_folder)
+        finally:
+            if self.run_stamp == stamp:
+                self._exited(code, trainer_checked=True)
+
     async def _watch_received(self, stamp, folder):
         # Read only the first saved record of this run. The native trade-back
         # owns the original bytes; this metadata is never used as an offer.
         while self.run_stamp == stamp:
             files = await asyncio.to_thread(received.session_files, folder, stamp)
             if files and self.completed:
+                if self.discovering:
+                    await self._learn_received_trainer(stamp, folder)
                 try:
                     data = await asyncio.to_thread(Path(files[0]).read_bytes)
                     info = await asyncio.to_thread(self.service.check_bytes, self.game, data)
@@ -569,7 +595,12 @@ class Team:
                 return
             await asyncio.sleep(.3)
 
-    def _exited(self, code):
+    def _exited(self, code, *, trainer_checked=False):
+        if (self.discovering and self.completed and not self.found_trainer
+                and self.game in console_trainer.GAME_VERSIONS and not trainer_checked):
+            # Keep the radio/session locked until the final saved record is read.
+            asyncio.get_running_loop().create_task(self._finish_discovery(self.run_stamp, code))
+            return
         if self.discovering and self.completed and self.found_trainer:
             found = self.found_trainer
             try:

@@ -49,3 +49,10 @@ Prueba física pendiente del usuario; recuperación posterior requiere diseño i
 Implementado el switch y la vista; acciones superiores, tarjeta de recibido, resumen y advertencia de devolución pendiente. Se reutiliza el retorno nativo y se detecta su aviso de original no conservado para solicitar cancelación, sin declarar éxito. El entrenador identificado se conserva frente a eventos posteriores. La identificación mantiene el requisito de evento compatible existente; no se promete detección en todos los juegos/roles.
 
 117 pruebas de portátil/trade-back aprobadas con sockets locales; 53 pruebas de controlador/vista aprobadas después del último guard de error. Verificación visual simulada a 800 × 480, guardada en [referencia](references/implemented-trainer-return-demo-800x480.jpg). Aplicación real reiniciada en 8551 para prueba manual. No se inició intercambio ni flash como parte de la validación.
+
+## Corrección: identificación en Espada/Escudo
+Se encontró una diferencia respecto de escritorio: `Games.learn_trainer` extraía el dueño del archivo recibido, mientras el portátil solo aceptaba eventos `[trainer]`. Se añade esa lectura mediante `Service.owner` y el mismo filtro `console_trainer.own`, usando únicamente el primer archivo de la sesión confirmada. La devolución nativa permanece intacta.
+
+La lectura final se espera antes de cerrar identificación, incluso si el proceso termina antes que PKHeX. El bloqueo de sesión permanece hasta completar esa lectura. Los eventos de entrenador ya aceptados tienen prioridad y los resultados obsoletos se descartan por identificador de sesión.
+
+Verificación: 70 pruebas de controlador Equipo, modalidades recibidas y entrenador aprobadas. Incluyen Sword/Shield, rechazo de huevo, handler ajeno y otra versión, lectura al cierre y protección entre sesiones. Prueba física con Switch pendiente; no se inició radio durante la corrección.

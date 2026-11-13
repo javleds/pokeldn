@@ -98,3 +98,8 @@ El usuario autorizó continuar las seis modalidades descritas en spec 005. Imple
 La opción de máximos en Modificador vuelve al valor del original al desmarcar, porque allí no se genera otro Pokémon. En Equipo sigue volviendo a Automático. No sobrescribir entrenador ni origen al editar; algunos cambios explícitos ligados al PID pueden resultar imposibles legalmente. No reparar el formulario ni sustituir el original silenciosamente.
 
 Se conserva un registro privado de originales y devoluciones pendientes. Al reiniciar/configurar otra sesión no se reenvían automáticamente: es necesario verificar destinatario y la recuperación automática sigue fuera de alcance. La exclusión de radio permanece activa aunque el formulario de Modificador esté habilitado.
+
+### Identificación por Pokémon recibido (Espada/Escudo)
+- La identificación portátil usa también `Service.owner` y `console_trainer.own`, igual que `Find mine` de escritorio. No depende exclusivamente de eventos `[trainer]`.
+- Solo el primer recibido de la sesión confirmada puede aportar el perfil: sin huevo, handler original y versión del juego compatible. No se adopta el OT de un Pokémon ajeno ni el del segundo intercambio de devolución.
+- El cierre espera la lectura final antes de declarar identificación fallida y liberar la sesión; resultados tardíos no cruzan `run_stamp`. Se conserva la prioridad del entrenador ya identificado por protocolo.
