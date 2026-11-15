@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
-# Compile the portable app's PKHeX engine with an existing .NET 10 SDK.
+# Build PKHeX or package the Portable app with an existing .NET 10 SDK.
 set -euo pipefail
 
 PROJECT_ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
     cat <<'USAGE'
 Usage: scripts/build_portable.sh [additional dotnet build arguments]
+       scripts/build_portable.sh --app
 
+Use --app to package pokeLDN Portable with its icon (requires the Python venv).
 Builds PKHeX in Release; restores dependencies by default.
-Finds an existing .NET 10 SDK automatically. Does not install dependencies,
-launch the GUI, or create an independent .app/Linux distribution.
+Finds an existing .NET 10 SDK automatically. Does not install build tools or launch the GUI.
+Without --app, only builds PKHeX; --app creates an independent application.
 Example: scripts/build_portable.sh --no-restore  (only after a successful restore)
 USAGE
     exit 0
@@ -44,4 +46,12 @@ export DOTNET_ROOT="$sdk_base"
 export PATH="$(dirname -- "$sdk_command"):$PATH"
 export DOTNET_CLI_HOME="$PROJECT_ROOT/.tools/dotnet-home"
 printf 'Compilando PKHeX desde %s\nSDK: %s\n' "$PROJECT_ROOT" "$sdk_command"
+if [[ "${1:-}" == "--app" ]]; then
+    shift
+    if [[ ! -x "$PROJECT_ROOT/.venv/bin/python" ]]; then
+        printf 'Falta .venv/bin/python. Prepara el entorno según docs/portable-build.md\n' >&2
+        exit 1
+    fi
+    exec "$PROJECT_ROOT/.venv/bin/python" "$PROJECT_ROOT/scripts/pack_app.py" --portable "$@"
+fi
 exec "$sdk_command" build -c Release services/pkhex -warnaserror "$@"

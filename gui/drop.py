@@ -21,7 +21,7 @@ def use_client() -> bool:
         AVAILABLE = False
     elif getattr(sys, "frozen", False):
         read_any_compression()
-        AVAILABLE = True
+        AVAILABLE = not Path(sys._MEIPASS, "portable-standard-client").is_file()
     elif (path := view_path()) is not None:
         os.environ["FLET_VIEW_PATH"] = str(path)
         AVAILABLE = True

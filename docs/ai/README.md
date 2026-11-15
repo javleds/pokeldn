@@ -37,7 +37,9 @@ Leyendas Z-A incorporado a la galería y a los adaptadores portátiles de devolu
 
 ## Compilación portátil e identidad
 
-[Guía Mac / Raspberry Pi 5](../portable-build.md): compilación PKHeX, ejecución nativa, dependencias, rutas de datos, acceso Linux y límites del empaquetado. [Spec 016](../specs/016-portable-icon-build-guide.md). Ícono propio en `gui/assets/portable/icon.png`; no sustituye todavía la identidad del cliente Flet/Dock. Pi pendiente de comprobación física.
+[Guía Mac / Raspberry Pi 5](../portable-build.md): compilación PKHeX, ejecución nativa, dependencias, rutas de datos, acceso Linux y límites del empaquetado. [Spec 016](../specs/016-portable-icon-build-guide.md). Ícono propio en `gui/assets/portable/icon.png`; aplicado al paquete con `./scripts/build_portable.sh --app` ([spec 020](../specs/020-portable-app-package.md)); el arranque desde fuente conserva el cliente de desarrollo. Pi pendiente de comprobación física.
 
 Compilación habitual tras preparar el entorno: `./scripts/build_portable.sh` ([spec 017](../specs/017-portable-build-command.md)); resuelve directorio y SDK local automáticamente.
 Arranque habitual: `./scripts/run_portable.sh` ([spec 018](../specs/018-portable-run-command.md)); no necesita exports y conserva los datos locales existentes.
+
+[Benchmark y opciones de hardware económico](../portable-benchmark.md): primeras mediciones Mac, script aislado y criterios para Pi. Son resultados piloto, no certificación de placa/RAM mínima ni aprobación de reescritura de UI.

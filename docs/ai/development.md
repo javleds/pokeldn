@@ -143,3 +143,6 @@ Suite nueva de servicio/controlador/vistas: 362 pruebas aprobadas; inspección v
 
 ### Reapertura nativa de Flet en macOS
 Si al relanzar el cliente queda en «Working…» con `RuntimeError: Session closed` durante foco/scroll, cerrar la instancia anterior y probar `FLET_SERVER_PORT=8590 FLET_SERVER_IP=127.0.0.1` conservando `POKELDN_PORTABLE=1` y sin `POKELDN_GUI_WEB` ni `FLET_FORCE_WEB_SERVER`. Sigue siendo cliente nativo; cambia el transporte local del socket temporal a TCP. Esta alternativa permitió abrir la galería en esta sesión. No se determinó aún la causa raíz del fallo del socket temporal.
+
+### Empaquetado Portable (spec 020)
+`./scripts/build_portable.sh --app` publica PKHeX y empaqueta la GUI con identidad portátil. Comandos y dependencias en [guía portátil](../portable-build.md#crear-la-app-con-su-ícono); evidencia y límites en [spec 020](../specs/020-portable-app-package.md). Validación focalizada: `.venv/bin/python -m pytest tests/test_portable_package.py -q -W error`. No confundir firma ad hoc/verificación local con distribución notarizada o validación en Pi.

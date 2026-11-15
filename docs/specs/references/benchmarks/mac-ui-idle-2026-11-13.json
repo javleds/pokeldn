@@ -1,0 +1,31 @@
+{
+  "scenario": "Native Flet Equipo idle, 3 legal demo Pokemon, sprites disabled, no radio; 10 seconds",
+  "seconds": 10.072241040877998,
+  "peak_sum_rss_mib": 476.71875,
+  "processes": [
+    {
+      "name": "python3.13",
+      "rss_mib_median": 62.203125,
+      "rss_mib_max": 62.203125,
+      "cpu_percent_one_core": 0.0
+    },
+    {
+      "name": "open",
+      "rss_mib_median": 5.65625,
+      "rss_mib_max": 5.65625,
+      "cpu_percent_one_core": 0.0
+    },
+    {
+      "name": "pokeldn-pkhex",
+      "rss_mib_median": 116.6875,
+      "rss_mib_max": 116.6875,
+      "cpu_percent_one_core": 0.0
+    },
+    {
+      "name": "Flet",
+      "rss_mib_median": 292.171875,
+      "rss_mib_max": 292.171875,
+      "cpu_percent_one_core": 0.0022258402980034134
+    }
+  ]
+}

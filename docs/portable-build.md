@@ -225,17 +225,29 @@ dotnet build -c Release services/pkhex -warnaserror
 
 Volver a arrancar con las mismas variables y ruta de datos. No borrar perfiles para actualizar. Si se transfiere código entre plataformas, usar checkout limpio y reconstruir: el motor elige el ejecutable más reciente entre `dist` y `bin/Release`, incluso si se copió uno incompatible. `POKELDN_PKHEX` permite fijar explícitamente un ejecutable correcto.
 
-## ¿Cómo producir una app independiente?
+## Crear la app con su ícono
 
-El empaquetador existente `scripts/pack_app.py` es del escritorio upstream. Exige todas sus imágenes de firmware, cliente Flet personalizado (`build_client.py`, Flutter), Unicorn reducido (`build_unicorn.py`, CMake), PyInstaller y, en Mac, Xcode 26 para Icon Composer. Además publica PKHeX para la arquitectura del host. Procedimiento completo: [Build a desktop app](gui.md#build-a-desktop-app).
+Con el entorno preparado, desde cualquier directorio:
 
-**Todavía no es un empaquetador específico Portable.** No basta ejecutar `flet build macos` o `flet build linux`: hay procesos auxiliares, archivos de protocolos, PKHeX y firmware que incluir. El icono upstream y el modo normal siguen siendo los predeterminados del packer; `POKELDN_PORTABLE=1` se evalúa al arrancar, no queda incrustado por exportarlo durante la compilación.
+```sh
+./scripts/build_portable.sh --app
+```
 
-Para una distribución autónoma portátil falta adaptar y comprobar: entrada que active el perfil sin variables externas, nombre/identidad e ícono propios en bundle y cliente, assets incluidos explícitamente (el packer usa `git ls-files`), firmware C6 y auxiliares, build nativo separado macOS/ARM64 Linux, ejecución en equipo limpio, y firma/notarización si se distribuye en Mac. No modificar el cliente Flet compartido dentro de `~/.flet` para ponerle el ícono: afectaría otras aplicaciones.
+Publica PKHeX para el host y reutiliza el empaquetador existente con `--portable`. En macOS produce `dist/pokeldn-portable.app`, con nombre visible **pokeLDN Portable**, identificador propio e ícono portátil tanto en el bundle como en el cliente que muestra la ventana y el Dock. Convierte el PNG a `.icns` con `sips`/`iconutil`; no requiere Icon Composer. Firma ad hoc local, sin notarización Apple.
+
+El perfil portátil queda incorporado mediante un runtime hook (TCP local, puerto 8590 por defecto, configurable con `FLET_SERVER_PORT`; cerrar la instancia anterior): no necesita exports, ignora variables web/demo heredadas y conserva `POKELDN_DATA` si se indicó. Sin esa variable usa `~/Library/Application Support/pokeldn-portable` en Mac, `%APPDATA%/pokeldn-portable` en Windows y `$XDG_DATA_HOME/pokeldn-portable` (default `~/.local/share`) en Linux. No copia automáticamente datos de `.local-preview/portable`; para abrirlos, lanzar el ejecutable con su `POKELDN_DATA` explícito.
+
+Requiere SDK .NET 10, `.venv` con `gui/requirements.txt`, herramientas de compilación nativas y los diez archivos de firmware del empaquetador. El primer publish/cliente puede requerir red. Incluye Python, PKHeX, assets y firmware; no incluye `prod.keys`, bancos personales ni el entorno `.venv`. No se instala ni se abre automáticamente.
+
+Si existen cliente personalizado y Unicorn reducido, los reutiliza. Si faltan, Portable permite cliente Flet estándar y Unicorn del wheel: el paquete puede ser mayor y no admite arrastre de archivos desde escritorio; los selectores normales permanecen disponibles. El cliente compartido de `~/.flet` no se modifica: se personaliza una copia durante el empaquetado.
+
+`./scripts/build_portable.sh` sin `--app` conserva su función de compilar únicamente PKHeX. `scripts/run_portable.sh` sigue ejecutando desde fuente y no cambia el ícono del cliente de desarrollo. `python scripts/pack_app.py` sin `--portable` conserva el paquete de escritorio upstream y sus requisitos.
+
+La distribución Linux ARM64 debe construirse y validarse en ese host; una app de Mac no sirve en Pi. Firma/notarización Apple, ejecución en equipo limpio e integración del ícono en el panel Pi requieren validación propia.
 
 ## Ícono entregado
 
-[PNG transparente](../gui/assets/portable/icon.png), 1254 × 1254, con [prompt y procedencia](../gui/assets/portable/README.md). Se conserva el ícono upstream. El PNG sirve para Linux y como maestro para producir el `.icns`/catálogo del futuro bundle macOS; **todavía no sustituye el ícono del Dock del cliente Flet**.
+[PNG transparente](../gui/assets/portable/icon.png), 1254 × 1254, con [prompt y procedencia](../gui/assets/portable/README.md). Se conserva el ícono upstream. El empaquetado Portable aplica este PNG; ejecutar desde fuente conserva la identidad del cliente Flet de desarrollo.
 
 ## Solución de problemas
 

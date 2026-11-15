@@ -46,11 +46,32 @@ def compile_mac_icon(folder: Path) -> Path:
     return folder
 
 
-def runtime_files() -> list[str]:
+def compile_portable_mac_icon(folder: Path) -> Path:
+    """Produce a conventional icns without requiring an Icon Composer catalog."""
+    iconset = folder / "AppIcon.iconset"
+    iconset.mkdir()
+    for size in (16, 32, 128, 256, 512):
+        for scale in (1, 2):
+            pixels = size * scale
+            suffix = "@2x" if scale == 2 else ""
+            subprocess.run(["sips", "-z", str(pixels), str(pixels),
+                            str(ROOT / "gui/assets/portable/icon.png"), "--out",
+                            str(iconset / f"icon_{size}x{size}{suffix}.png")],
+                           check=True, stdout=subprocess.DEVNULL)
+    icon = folder / "AppIcon.icns"
+    subprocess.run(["iconutil", "-c", "icns", str(iconset), "-o", str(icon)], check=True)
+    return icon
+
+
+def runtime_files(portable: bool = False) -> list[str]:
     tracked = subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT).decode().split("\0")
     folders = ("bin/", "pokeldn/", "vendor/LDN/ldn/", "docs/", "gui/assets/")
-    return [name for name in tracked if (name.startswith(folders) or name in
+    names = [name for name in tracked if (name.startswith(folders) or name in
             ("config/host.toml", "gui/guide.md", "LICENSE", "vendor/LDN/LICENSE")) and (ROOT / name).is_file()]
+    if portable:
+        names += [str(path.relative_to(ROOT)) for path in (ROOT / "gui/assets/portable").rglob("*")
+                  if path.is_file()]
+    return sorted(set(names))
 
 
 def platform_excludes():
@@ -123,9 +144,9 @@ def clear_cfg(exe: Path) -> None:
 RUN_EXE = "pokeldn-run.exe"
 
 
-def split_windows_console(folder: Path) -> None:
+def split_windows_console(folder: Path, name: str = "pokeldn") -> None:
     """Copies the console-subsystem pokeldn.exe to pokeldn-run.exe, then marks pokeldn.exe GUI-subsystem."""
-    exe = folder / "pokeldn.exe"
+    exe = folder / f"{name}.exe"
     shutil.copy2(exe, folder / RUN_EXE)
     set_subsystem(exe, 2)
 
@@ -152,7 +173,12 @@ def pe_checksum(data: bytes, field: int) -> int:
 
 
 def main() -> int:
-    argparse.ArgumentParser(description=__doc__).parse_args()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--portable", action="store_true", help="Build pokeLDN Portable with its own icon and startup profile")
+    portable = parser.parse_args().portable
+    name = "pokeldn-portable" if portable else "pokeldn"
+    product = "pokeLDN Portable" if portable else "pokeldn"
+    app_id = "io.github.javleds.pokeldn.portable" if portable else APP_ID
     firmware = (FIRMWARE, FIRMWARE_S3, FIRMWARE_C3, FIRMWARE_C6, FIRMWARE_PAD, FIRMWARE_PAD_ESP32, FIRMWARE_BLE,
                 FIRMWARE_BLE_C6, *FIRMWARE_SCREEN)
     missing = [str(path) for path in firmware if not path.is_file()]
@@ -160,10 +186,10 @@ def main() -> int:
         raise SystemExit(f"Missing firmware: {', '.join(missing)}. Build all ten images "
                          "as described in docs/gui.md before packing.")
     client = CLIENT / platform_key()
-    if not (client / MARKER).is_file():
+    if not portable and not (client / MARKER).is_file():
         raise SystemExit("Missing the Flet client that takes file drops. Build it with "
                          "python scripts/build_client.py (needs Flutter) before packing.")
-    if not (UNICORN / MARKER_UNICORN).is_file():
+    if not portable and not (UNICORN / MARKER_UNICORN).is_file():
         raise SystemExit("Missing the ARM-only Unicorn. Build it with python scripts/build_unicorn.py "
                          "(needs CMake) before packing.")
     if importlib.util.find_spec("PyInstaller") is None:
@@ -174,13 +200,17 @@ def main() -> int:
     executable = service / "dist" / ("pokeldn-pkhex.exe" if sys.platform == "win32" else "pokeldn-pkhex")
     with tempfile.TemporaryDirectory(prefix="pokeldn-pack-") as folder:
         stage = Path(folder)
-        mac_icon = compile_mac_icon(Path(tempfile.mkdtemp(dir=folder))) if sys.platform == "darwin" else None
+        mac_icon = compile_mac_icon(Path(tempfile.mkdtemp(dir=folder))) if sys.platform == "darwin" and not portable else None
         icon = mac_icon / "AppIcon.icns" if mac_icon else ROOT / "gui" / "assets" / (
             "icon.ico" if sys.platform == "win32" else "icon.png")
-        for name in runtime_files():
-            dest = stage / name
+        if portable:
+            icon = ROOT / "gui/assets/portable/icon.png"
+            if sys.platform == "darwin":
+                icon = compile_portable_mac_icon(stage)
+        for asset_name in runtime_files(portable):
+            dest = stage / asset_name
             dest.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(ROOT / name, dest)
+            shutil.copy2(ROOT / asset_name, dest)
         dependencies = stage / "dependencies"
         if sys.platform == "darwin":
             import serial
@@ -197,16 +227,25 @@ def main() -> int:
         data += [(stage / "gui/guide.md", "gui"), (executable, "services/pkhex/dist")]
         data += [(stage / "LICENSE", "."), (stage / "vendor/LDN/LICENSE", "vendor/LDN")]
         data += [(path, "gui/firmware") for path in firmware]
+        if portable and not (client / MARKER).is_file():
+            standard_client = stage / "portable-standard-client"
+            standard_client.touch()
+            data.append((standard_client, "."))
         # scripts/build_unicorn.py's ARM-only library, not the wheel's; unicorn looks in its own lib/.
-        data += [(path, "unicorn/lib") for path in (UNICORN / "lib").iterdir()]
+        if (UNICORN / MARKER_UNICORN).is_file():
+            data += [(path, "unicorn/lib") for path in (UNICORN / "lib").iterdir()]
         args = [sys.executable, str(ROOT / "scripts/pack_flet.py"), "pack", str(ROOT / "gui" / "main.py"),
-                "--name", "pokeldn", "-y",
-                "--distpath", str(ROOT / "dist"), "--product-name", "pokeldn",
+                "--name", name, "-y",
+                "--distpath", str(ROOT / "dist"), "--product-name", product,
                 "--product-version", __version__, "--file-version", f"{__version__}.0",
-                "--bundle-id", APP_ID, "--add-data",
+                "--bundle-id", app_id, "--add-data",
                 *[f"{src}{os.pathsep}{dest}" for src, dest in data]]
         if sys.platform in ("darwin", "win32"):
             args += ["--icon", str(icon)]
+        if portable:
+            args.append(f"--pyinstaller-build-args=--runtime-hook={ROOT / 'scripts/portable_runtime.py'}")
+            if not (UNICORN / MARKER_UNICORN).is_file():
+                args.append("--pyinstaller-build-args=--collect-all=unicorn")
         scripts = sorted(p.stem for p in (stage / "bin").glob("*.py"))
         console = ["--console", "--hide-console=hide-early"] if sys.platform == "win32" else []
         # A single file unpacks all of itself at every launch and every run (docs/gui.md). Flet's own
@@ -221,11 +260,16 @@ def main() -> int:
                        "--collect-all=esp_pylib", "--collect-submodules=pokeldn", "--collect-submodules=bleak",
                        "--collect-submodules=ldn"):
             args.append(f"--pyinstaller-build-args={option}")
-        env = dict(os.environ, FLET_VIEW_PATH=str(client))
+        env = dict(os.environ)
+        env.pop("POKELDN_ICON_CAR", None)
+        if (client / MARKER).is_file():
+            env["FLET_VIEW_PATH"] = str(client)
+        else:
+            env.pop("FLET_VIEW_PATH", None)
         if mac_icon:
             env["POKELDN_ICON_CAR"] = str(mac_icon / "Assets.car")
         result = subprocess.run(args, cwd=stage, env=env).returncode
-        expected = ROOT / "dist" / (("pokeldn.app" if sys.platform == "darwin" else "pokeldn"))
+        expected = ROOT / "dist" / (f"{name}.app" if sys.platform == "darwin" else name)
         if result == 0 and not expected.exists():
             raise SystemExit("The packer produced no desktop application.")
         if result == 0 and sys.platform == "darwin":
@@ -238,11 +282,16 @@ def main() -> int:
             # macOS kills a process that opens Bluetooth without this key: the controller service
             # (pokeldn.pad.service) runs as this app's child.
             info["NSBluetoothAlwaysUsageDescription"] = "pokeldn presses buttons on your Switch through the controller board."
-            shutil.copy2(mac_icon / "Assets.car", expected / "Contents/Resources/Assets.car")
-            info["CFBundleIconName"] = "AppIcon"
+            if mac_icon:
+                shutil.copy2(mac_icon / "Assets.car", expected / "Contents/Resources/Assets.car")
+                info["CFBundleIconName"] = "AppIcon"
+            else:
+                info.pop("CFBundleIconName", None)
+                info["CFBundleIconFile"] = "AppIcon.icns"
+                shutil.copy2(icon, expected / "Contents/Resources/AppIcon.icns")
             with info_path.open("wb") as dest:
                 plistlib.dump(info, dest)
-            strip_local_symbols(expected, {expected / "Contents/MacOS/pokeldn",
+            strip_local_symbols(expected, {expected / f"Contents/MacOS/{name}",
                                            expected / "Contents/Frameworks/services/pkhex/dist" / executable.name})
             # macOS 26 gives a background process signed as the bundle's main executable a passive Bluetooth
             # scan with no discoveries; a bare-signed copy gets an active one (docs/gui.md, The controller).
@@ -250,17 +299,17 @@ def main() -> int:
             helpers = expected / "Contents/Helpers"
             helpers.mkdir(exist_ok=True)
             helper = helpers / "pokeldn-bluetooth"
-            shutil.copy2(expected / "Contents/MacOS/pokeldn", helper)
+            shutil.copy2(expected / f"Contents/MacOS/{name}", helper)
             (helpers / "_internal").symlink_to("../Frameworks")
             subprocess.run(["codesign", "--force", "--deep", "--sign", "-", str(expected)], check=True)
             subprocess.run(["codesign", "--force", "--sign", "-", "--identifier", "pokeldn-bluetooth", str(helper)],
                            check=True)
             subprocess.run(["codesign", "--force", "--sign", "-", str(expected)], check=True)
         if result == 0 and sys.platform == "win32":
-            clear_cfg(expected / "pokeldn.exe")
-            split_windows_console(expected)
+            clear_cfg(expected / f"{name}.exe")
+            split_windows_console(expected, name)
         if result == 0 and sys.platform.startswith("linux"):
-            (ROOT / "dist" / f"{APP_ID}.desktop").unlink(missing_ok=True)
+            (ROOT / "dist" / f"{app_id}.desktop").unlink(missing_ok=True)
         return result
 
 

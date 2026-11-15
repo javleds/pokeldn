@@ -1,0 +1,200 @@
+{
+  "timestamp_utc": "2026-11-13T20:32:13.210292+00:00",
+  "game": "swsh",
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "machine": "arm64",
+  "python": "3.13.7",
+  "logical_cpus": 8,
+  "system_ram_gib": 24.0,
+  "sample_interval_seconds": 0.1,
+  "scope": "Real Team + PKHeX; sampler overhead included. No Flutter, radio, OS memory or disk-cold guarantee.",
+  "stages": [
+    {
+      "stage": "import_team_and_service",
+      "seconds": 0.2091,
+      "peak_sampled_rss_mib": 51.64,
+      "sampled_cpu_seconds": 0.2157,
+      "samples": 3,
+      "process_names": [
+        "python3.13"
+      ],
+      "sampling_error": ""
+    },
+    {
+      "stage": "cold_catalogs",
+      "seconds": 0.0707,
+      "peak_sampled_rss_mib": 110.55,
+      "sampled_cpu_seconds": 0.0768,
+      "samples": 2,
+      "process_names": [
+        "pokeldn-pkhex",
+        "python3.13"
+      ],
+      "sampling_error": ""
+    },
+    {
+      "stage": "first_six_species_validate",
+      "seconds": 0.2895,
+      "peak_sampled_rss_mib": 183.48,
+      "sampled_cpu_seconds": 0.3172,
+      "samples": 4,
+      "process_names": [
+        "pokeldn-pkhex",
+        "python3.13"
+      ],
+      "sampling_error": ""
+    },
+    {
+      "stage": "unchanged_six_validate_cached",
+      "seconds": 0.0001,
+      "peak_sampled_rss_mib": 183.48,
+      "sampled_cpu_seconds": 0.0064,
+      "samples": 2,
+      "process_names": [
+        "pokeldn-pkhex",
+        "python3.13"
+      ],
+      "sampling_error": ""
+    },
+    {
+      "stage": "edit_one_nickname_1",
+      "seconds": 0.0036,
+      "peak_sampled_rss_mib": 183.59,
+      "sampled_cpu_seconds": 0.0104,
+      "samples": 2,
+      "process_names": [
+        "pokeldn-pkhex",
+        "python3.13"
+      ],
+      "sampling_error": ""
+    },
+    {
+      "stage": "edit_one_nickname_2",
+      "seconds": 0.0026,
+      "peak_sampled_rss_mib": 183.69,
+      "sampled_cpu_seconds": 0.0091,
+      "samples": 2,
+      "process_names": [
+        "pokeldn-pkhex",
+        "python3.13"
+      ],
+      "sampling_error": ""
+    },
+    {
+      "stage": "edit_one_nickname_3",
+      "seconds": 0.0027,
+      "peak_sampled_rss_mib": 183.78,
+      "sampled_cpu_seconds": 0.0091,
+      "samples": 2,
+      "process_names": [
+        "pokeldn-pkhex",
+        "python3.13"
+      ],
+      "sampling_error": ""
+    },
+    {
+      "stage": "edit_six_nicknames",
+      "seconds": 0.013,
+      "peak_sampled_rss_mib": 184.34,
+      "sampled_cpu_seconds": 0.0216,
+      "samples": 2,
+      "process_names": [
+        "pokeldn-pkhex",
+        "python3.13"
+      ],
+      "sampling_error": ""
+    },
+    {
+      "stage": "edit_six_levels_recalculate_options",
+      "seconds": 0.0179,
+      "peak_sampled_rss_mib": 185.27,
+      "sampled_cpu_seconds": 0.0267,
+      "samples": 2,
+      "process_names": [
+        "pokeldn-pkhex",
+        "python3.13"
+      ],
+      "sampling_error": ""
+    },
+    {
+      "stage": "warm_idle_3_seconds",
+      "seconds": 3.0012,
+      "peak_sampled_rss_mib": 186.62,
+      "sampled_cpu_seconds": 0.5115,
+      "samples": 25,
+      "process_names": [
+        "pokeldn-pkhex",
+        "python3.13"
+      ],
+      "sampling_error": ""
+    }
+  ],
+  "validation": [
+    {
+      "stage": "first_six_species_validate",
+      "states": [
+        "legal",
+        "legal",
+        "legal",
+        "legal",
+        "legal",
+        "legal"
+      ]
+    },
+    {
+      "stage": "edit_one_nickname_1",
+      "states": [
+        "legal",
+        "legal",
+        "legal",
+        "legal",
+        "legal",
+        "legal"
+      ]
+    },
+    {
+      "stage": "edit_one_nickname_2",
+      "states": [
+        "legal",
+        "legal",
+        "legal",
+        "legal",
+        "legal",
+        "legal"
+      ]
+    },
+    {
+      "stage": "edit_one_nickname_3",
+      "states": [
+        "legal",
+        "legal",
+        "legal",
+        "legal",
+        "legal",
+        "legal"
+      ]
+    },
+    {
+      "stage": "edit_six_nicknames",
+      "states": [
+        "legal",
+        "legal",
+        "legal",
+        "legal",
+        "legal",
+        "legal"
+      ]
+    },
+    {
+      "stage": "edit_six_levels_recalculate_options",
+      "states": [
+        "legal",
+        "legal",
+        "legal",
+        "legal",
+        "legal",
+        "legal"
+      ]
+    }
+  ]
+}
