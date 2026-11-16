@@ -61,6 +61,8 @@ class PortableView:
         self.selected_game = None
         self.game_list = None
         self.gallery_navigation = asyncio.Lock()
+        self.focus_tasks = set()
+        self.connected = True
         self.picker = ft.FilePicker()
         self.error = ""
         self.rendered_screen = ""
@@ -105,6 +107,7 @@ class PortableView:
 
     async def close(self, e):
         if not self.setup.busy and not self.setup.session_busy:
+            self.disconnect_focus()
             await self.page.window.destroy()
 
     def button(self, key, text, callback, primary=False, disabled=False, icon=None):
@@ -156,11 +159,27 @@ class PortableView:
         self.startup_pending = False
         self.screen, self.focus_index = screen, 0
         self.render()
-        self.page.run_task(self.focus)
+        self.schedule_focus()
+
+    def schedule_focus(self):
+        if not self.connected:
+            return
+        # Flet returns a concurrent Future; keep it alive while the client replies.
+        task = self.page.run_task(self.focus)
+        if task is not None:
+            self.focus_tasks.add(task)
+            task.add_done_callback(self.focus_tasks.discard)
+
+    def disconnect_focus(self):
+        self.connected = False
+        for task in tuple(self.focus_tasks):
+            task.cancel()
+        self.focus_tasks.clear()
 
     async def focus(self):
         async with self.gallery_navigation:
-            await self._focus()
+            if self.connected:
+                await self._focus()
 
     async def _focus(self):
         if self.screen == 'team':
@@ -561,7 +580,8 @@ class PortableView:
             self.startup_pending = False
         if self.setup.ready and not self.setup.busy:
             self.go("home")
-        await self.focus()
+        else:
+            await self.focus()
 
 
 async def main(page: ft.Page):
@@ -595,6 +615,7 @@ async def main(page: ft.Page):
             if setup.busy:
                 view.go("progress")
             else:
+                view.disconnect_focus()
                 await page.window.destroy()
     page.window.on_event = window_event
     # Notifications can originate from another web session: dispatch on this page.
@@ -604,10 +625,12 @@ async def main(page: ft.Page):
         view.changed()
     setup.listeners.add(changed)
     async def disconnect(e):
+        view.disconnect_focus()
         view.resources.connected = False
         view.resources.sync()
         setup.listeners.discard(changed)
     async def reconnect(e):
+        view.connected = True
         view.resources.connected = True
         view.resources.sync()
         setup.listeners.add(changed)

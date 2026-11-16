@@ -214,3 +214,70 @@ def test_manual_settings_stay_open_after_successful_checks(view):
     view.go('health')
     view.changed()
     assert view.screen == 'health'
+
+
+def test_pending_focus_survives_collection_until_disconnect(view, monkeypatch):
+    import gc
+    import weakref
+
+    async def scenario():
+        entered = asyncio.Event()
+        task_ref = None
+        async def waiting_for_client():
+            nonlocal task_ref
+            task_ref = weakref.ref(asyncio.current_task())
+            entered.set()
+            await asyncio.Future()
+        monkeypatch.setattr(view, '_focus', waiting_for_client)
+        loop = asyncio.get_running_loop()
+        monkeypatch.setattr(view.page, 'run_task',
+                            lambda handler: asyncio.run_coroutine_threadsafe(handler(), loop))
+        view.schedule_focus()
+        await entered.wait()
+        gc.collect()
+        assert task_ref() is not None
+        assert not task_ref().done()
+        assert view.gallery_navigation.locked()
+        assert len(view.focus_tasks) == 1
+        pending = task_ref()
+        view.disconnect_focus()
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+        assert pending.cancelled()
+        assert not view.gallery_navigation.locked()
+        assert not view.focus_tasks
+        view.schedule_focus()
+        assert not view.focus_tasks
+
+    asyncio.run(scenario())
+
+
+def test_completed_focus_releases_retained_future(view, monkeypatch):
+    async def scenario():
+        loop = asyncio.get_running_loop()
+        monkeypatch.setattr(view.page, 'run_task',
+                            lambda handler: asyncio.run_coroutine_threadsafe(handler(), loop))
+        monkeypatch.setattr(view, '_focus', AsyncMock())
+        view.schedule_focus()
+        scheduled = next(iter(view.focus_tasks))
+        await asyncio.wrap_future(scheduled)
+        assert not view.focus_tasks
+    asyncio.run(scenario())
+
+
+def test_start_schedules_focus_only_once_when_checks_open_gallery(view, monkeypatch):
+    from unittest.mock import Mock
+    async def check():
+        view.setup.engine_ready = True
+        view.setup.keys_error = ''
+        view.setup.radio_state = 'ready'
+        view.setup.initialized = True
+    monkeypatch.setattr(view.setup, 'check', check)
+    scheduled = Mock(return_value=None)
+    monkeypatch.setattr(view.page, 'run_task', scheduled)
+    focus = AsyncMock()
+    monkeypatch.setattr(view, 'focus', focus)
+    asyncio.run(view.start())
+    assert view.screen == 'home'
+    scheduled.assert_called_once_with(focus)
+    focus.assert_not_awaited()

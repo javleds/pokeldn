@@ -222,3 +222,12 @@ Volver a Equipo queda en fila fija y deshabilitado durante sesión. Conservar
 advertencia de devolución pendiente al volver manualmente. Spec 024.
 Por instrucción del usuario, cambios y validaciones locales; él publica y actualiza
 la Pi. No editar por SSH ni desplegar automáticamente.
+
+## Tareas de foco y desconexión portátil (2026-11-15)
+
+Retener Futures de foco automático hasta completarlos y cancelarlos al
+cerrar/desconectar; evitar el segundo foco de start después de go(home).
+Conservar el lock que impide desmontar galería con scroll/foco en vuelo.
+Spec 025 reproduce localmente el aviso de tarea destruida reportado en Pi.
+No atribuirlo a build, fuente ni radio; confirmar por prueba física si resuelve
+también la demora de arranque. Cambios locales sin despliegue SSH.
