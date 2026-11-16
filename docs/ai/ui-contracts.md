@@ -51,3 +51,6 @@ pueden consultarse y exportarse durante el check. Mutaciones conservan sus guard
 
 Conexión (spec 033): código literal visible debajo del rol en el mismo botón,
 105 × 40, cabecera de 60 px. No añadir filas externas ni quitarlo durante sesión.
+
+Actualización spec 034: botón de conexión sin label redundante, conservando
+105 × 40, contenido rol/código y alineación inferior de la cabecera.

@@ -118,13 +118,14 @@ class TeamView:
     def _trade_header(self):
         self.connection.tooltip = 'Configurar conexión local'
         self.connection.height = self.mode_menu.height = 40
+        self.connection.width = 105
         trainer = ft.Row([self.trainer, self.trainer_info, self.find], spacing=2)
         trainer_section = labeled('Entrenador', trainer, expand=True)
         self.trainer_heading = trainer_section.controls[0]
         self.trainer_heading.size = 11
         return ft.Row([self.back, labeled('Modalidad', self.mode_menu, width=150),
                        trainer_section,
-                       labeled('Conexión', self.connection, width=105)], spacing=8, height=60,
+                       self.connection], spacing=8, height=60,
                       vertical_alignment=ft.CrossAxisAlignment.END)
 
     def _refresh_trainer(self, locked):

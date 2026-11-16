@@ -275,3 +275,8 @@ timeouts existentes; no se introduce cancelación insegura de threads. Spec 032.
 Mostrar rol y código en dos líneas dentro del botón existente de 105 × 40, sin
 modificar altura de cabecera. Preservar ceros; Sin código para opcional vacío y
 solo rol sin campo de código. Shared TeamView cubre todas las modalidades. Spec 033.
+
+## Conexión sin label (2026-11-16)
+Por solicitud del usuario, retirar label Conexión: rol y código identifican el
+botón. Conservar 105 × 40 y alineación inferior con controles de cabecera;
+tooltip explica configuración. Actualiza spec 033 mediante spec 034.
