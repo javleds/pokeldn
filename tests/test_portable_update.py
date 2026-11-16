@@ -305,7 +305,7 @@ def test_stable_shell_launcher_forwards_data_sdk_and_build_to_active_version(tmp
     (stage / '.venv/bin').mkdir(parents=True)
     (stage / '.venv/bin/python').touch()
     (stage / 'scripts/run_portable.sh').write_text('''#!/bin/sh
-python3 -c 'import json,os,sys; open(os.environ["RESULT"],"w").write(json.dumps({"data":os.environ["POKELDN_DATA"],"sdk":os.environ["DOTNET_ROOT"],"root":os.environ["POKELDN_INSTALL_ROOT"],"args":sys.argv[1:]}))' "$@"
+python3 -c 'import json,os,sys; open(os.environ["RESULT"],"w").write(json.dumps({"data":os.environ.get("POKELDN_DATA"),"sdk":os.environ["DOTNET_ROOT"],"root":os.environ["POKELDN_INSTALL_ROOT"],"args":sys.argv[1:]}))' "$@"
 ''')
     update._write(stage / '.portable-ready.json', {'commit': 'a' * 40})
     update._write(root / '.portable-updates/current.json', {'root': str(stage), 'commit': 'a' * 40})
@@ -315,7 +315,10 @@ python3 -c 'import json,os,sys; open(os.environ["RESULT"],"w").write(json.dumps(
     env = {**os.environ, 'RESULT': str(result)}
     subprocess.run(['bash', str(scripts / 'run_portable.sh'), '--build'], env=env, cwd=tmp_path, check=True)
     assert json.loads(result.read_text()) == {
-        'data': str(root / '.local-preview/portable'), 'sdk': str(sdk), 'root': str(root), 'args': ['--build']}
+        'data': None, 'sdk': str(sdk), 'root': str(root), 'args': ['--build']}
+    explicit = {**env, 'POKELDN_DATA': str(tmp_path / 'chosen data')}
+    subprocess.run(['bash', str(scripts / 'run_portable.sh')], env=explicit, cwd=tmp_path, check=True)
+    assert json.loads(result.read_text())['data'] == str(tmp_path / 'chosen data')
     with update._lock(root):
         blocked = subprocess.run(['bash', str(scripts / 'run_portable.sh')], env=env, cwd=tmp_path, capture_output=True)
     assert blocked.returncode != 0

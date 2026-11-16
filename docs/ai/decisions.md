@@ -346,3 +346,18 @@ El launcher estable preserva ruta absoluta de datos, SDK y contexto gráfico.
 No actualizar durante sesión/flash/check/escritura del banco. No reset/stash,
 sudo, firmware automático ni borrado de versiones/datos. Retener releases fallidas
 para diagnóstico; requieren espacio y limpieza manual. Spec 042.
+
+## Resolución única de datos portátiles (2026-11-16)
+Spec 043 sustituye los defaults distintos de launcher y paquete. Antes de importar
+paths/settings, resolver: override POKELDN_DATA explícito (sin persistir), elección
+por usuario, detección de carpeta estándar y legacy de la instalación estable.
+Una poblada: conservar; ninguna: crear estándar; dos: selector nativo independiente.
+Persistir sólo ruta absoluta, sin copiar/mover/fusionar datos. Error visible si la
+preferencia es inválida o la carpeta guardada desaparece. Perfil desktop intacto.
+Los workers --run/--module resuelven sin selector si no heredan ruta; ante conflicto
+fallan explícitamente, nunca usan otro perfil. Overrides temporales no cambian la
+preferencia global. El updater sigue heredando la carpeta efectiva de la sesión.
+El launcher estable 042 sintetizaba POKELDN_DATA sin marcador de procedencia; no es
+posible distinguirlo de un override real. Necesita actualizar manualmente una vez
+el checkout original (shell y dispatcher), sin borrar pointer ni datos. No aplicar
+heurísticas que cambien un override explícito por parecerse a la ruta antigua.

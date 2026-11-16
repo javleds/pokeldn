@@ -235,7 +235,7 @@ Con el entorno preparado, desde cualquier directorio:
 
 Publica PKHeX para el host y reutiliza el empaquetador existente con `--portable`. En macOS produce `dist/pokeldn-portable.app`, con nombre visible **pokeLDN Portable**, identificador propio e ícono portátil tanto en el bundle como en el cliente que muestra la ventana y el Dock. Convierte el PNG a `.icns` con `sips`/`iconutil`; no requiere Icon Composer. Firma ad hoc local, sin notarización Apple.
 
-El perfil portátil queda incorporado mediante un runtime hook (TCP local, puerto 8590 por defecto, configurable con `FLET_SERVER_PORT`; cerrar la instancia anterior): no necesita exports, ignora variables web/demo heredadas y conserva `POKELDN_DATA` si se indicó. Sin esa variable usa `~/Library/Application Support/pokeldn-portable` en Mac, `%APPDATA%/pokeldn-portable` en Windows y `$XDG_DATA_HOME/pokeldn-portable` (default `~/.local/share`) en Linux. No copia automáticamente datos de `.local-preview/portable`; para abrirlos, lanzar el ejecutable con su `POKELDN_DATA` explícito.
+El perfil portátil queda incorporado mediante un runtime hook (TCP local, puerto 8590 por defecto, configurable con `FLET_SERVER_PORT`; cerrar la instancia anterior): no necesita exports, ignora variables web/demo heredadas y conserva `POKELDN_DATA` si se indicó. Sin esa variable usa la resolución compartida y la elección guardada descritas en «Carpeta de datos compartida». No copia ni fusiona automáticamente datos de `.local-preview/portable`.
 
 Requiere SDK .NET 10, `.venv` con `gui/requirements.txt`, herramientas de compilación nativas y los diez archivos de firmware del empaquetador. El primer publish/cliente puede requerir red. Incluye Python, PKHeX, assets y firmware; no incluye `prod.keys`, bancos personales ni el entorno `.venv`. No se instala ni se abre automáticamente.
 
@@ -295,11 +295,11 @@ Firmware no se actualiza automáticamente: mantiene su flujo explícito habitual
 
 ### Datos y cambios locales
 
-El launcher fija `POKELDN_DATA` absoluto **antes** de seleccionar la versión activa.
-Sin una variable explícita conserva `<instalación original>/.local-preview/portable`.
-Si ya usabas otra carpeta, debes mantener esa misma variable en tu acceso directo.
-El updater no busca/migra otras carpetas ni copia claves, entrenadores o banco a la
-versión nueva. No borres datos ni reimportes claves para resolver un cambio de ruta.
+El arranque resuelve `POKELDN_DATA` absoluto **antes** de cargar configuración y
+conserva `POKELDN_INSTALL_ROOT` para localizar datos legacy de la instalación original.
+El updater hereda esa carpeta efectiva al reiniciar, sin migrar ni copiar claves,
+entrenadores o banco al release nuevo. No borres datos ni reimportes claves para
+resolver un cambio de ruta. Consulta la resolución compartida más abajo.
 
 La comprobación rechaza archivos modificados y archivos nuevos no ignorados: no
 hace `reset`, `stash` ni sobrescritura. Un `log.txt` sin seguimiento puede bloquearla;
@@ -328,3 +328,52 @@ necesitan una estrategia propia antes de publicarse.
 La verificación local usa repositorios Git temporales, fallos simulados y cliente
 Flet real a 800 × 480. No equivale a una actualización completa de red/pip/build en
 Raspberry Pi; esa primera validación en hardware sigue pendiente.
+
+## Carpeta de datos compartida
+
+Terminal, acceso directo y paquete portátil resuelven la carpeta con estas prioridades:
+
+1. `POKELDN_DATA` explícito: override de esa ejecución, no cambia la preferencia.
+2. Ruta guardada para el usuario.
+3. Detección de carpeta estándar y `<instalación original>/.local-preview/portable`.
+
+La carpeta estándar es `~/.local/share/pokeldn-portable` en Linux (respeta
+`XDG_DATA_HOME`), `~/Library/Application Support/pokeldn-portable` en Mac y
+`%APPDATA%/pokeldn-portable` en Windows. Si sólo una candidata contiene archivos,
+se reutiliza. Si ninguna contiene datos, se crea la estándar. Si ambas contienen
+archivos, aparece un selector antes de abrir configuración o radio; elegir no mueve
+ni mezcla datos. Las rutas equivalentes por symlink cuentan como una sola. No se
+escanea el disco ni se adoptan carpetas del perfil desktop.
+
+La elección se guarda en `~/.config/pokeldn-portable/portable-data.json` en Linux
+(respeta `XDG_CONFIG_HOME`), `~/Library/Application Support/pokeldn-portable-config/portable-data.json`
+en Mac, y `%APPDATA%/pokeldn-portable/portable-data.json` en Windows. Este archivo
+contiene únicamente versión del formato y ruta absoluta. Para volver a elegir,
+cierra la app y renombra **ese archivo de preferencia** a un respaldo distinto;
+no borres la carpeta de datos. Si sólo queda una candidata poblada, se selecciona
+automáticamente. Una ruta guardada desaparecida o configuración corrupta produce
+un aviso y no inicia con un perfil vacío.
+
+Si quieres usar la selección recordada, evita exports persistentes de `POKELDN_DATA`
+en shell o en `Exec=` del acceso: los overrides deliberados siguen teniendo prioridad.
+Una ruta personalizada fuera de las dos candidatas puede mantenerse con ese override.
+Los tests y ejecuciones aisladas con override no modifican la elección personal.
+
+### Actualización única del launcher anterior
+
+El launcher de spec 042 exportaba un default legacy antes de abrir la versión activa.
+Una versión nueva no puede distinguir ese valor de un export explícito del usuario.
+Para habilitar la nueva resolución actualiza una vez **el checkout original**, con
+la app cerrada, después de publicar main:
+
+```sh
+cd ~/pokeldn
+git pull --ff-only
+./scripts/run_portable.sh
+```
+
+Esto actualiza juntos `run_portable.sh` y `portable_launch.py`; no borres
+`.portable-updates/current.json` ni los datos. Si ya tienes un release activo, éste
+también debe contener la corrección; el self-update puede obtenerlo. Mientras el
+launcher estable sea el anterior, el override que genera seguirá siendo respetado.
+Este cambio sólo afecta Python/arranque: no necesita recompilar PKHeX.

@@ -30,7 +30,7 @@ def test_runtime_profile_is_native_and_preserves_explicit_data(monkeypatch, expl
     if explicit_data:
         assert os.environ["POKELDN_DATA"] == explicit_data
     else:
-        assert Path(os.environ["POKELDN_DATA"]).name == "pokeldn-portable"
+        assert "POKELDN_DATA" not in os.environ  # Main resolves storage before importing paths.
 
 
 def test_portable_icon_included_even_before_git_add(monkeypatch):

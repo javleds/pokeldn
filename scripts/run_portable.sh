@@ -9,7 +9,8 @@ Usage: scripts/run_portable.sh [--build]
 
 Opens the native portable app. --build compiles PKHeX first; a failed build
 prevents launch. Does not install dependencies.
-Uses .local-preview/portable for data unless POKELDN_DATA is already set.
+Reuses the saved data folder; first launch detects existing portable data.
+POKELDN_DATA explicitly overrides the saved folder for this run.
 FLET_SERVER_PORT defaults to 8590. Close the previous app before reopening.
 USAGE
     exit 0
@@ -21,9 +22,9 @@ elif (($#)); then
     printf 'Uso: scripts/run_portable.sh [--build | --help]\n' >&2
     exit 2
 fi
-# Resolve data and SDK against the stable installation before switching versions.
+# Keep the stable installation identity and SDK when switching versions.
+# The application resolves data before loading settings, using this stable root.
 export POKELDN_INSTALL_ROOT="${POKELDN_INSTALL_ROOT:-$PROJECT_ROOT}"
-export POKELDN_DATA="${POKELDN_DATA:-$POKELDN_INSTALL_ROOT/.local-preview/portable}"
 if [[ -z "${DOTNET_ROOT:-}" && -x "$POKELDN_INSTALL_ROOT/.tools/dotnet/dotnet" ]]; then
     export DOTNET_ROOT="$POKELDN_INSTALL_ROOT/.tools/dotnet"
 fi
@@ -42,7 +43,6 @@ if [[ "$BUILD_FIRST" == true ]]; then
 fi
 unset POKELDN_GUI_WEB FLET_FORCE_WEB_SERVER POKELDN_PORTABLE_DEMO
 export POKELDN_PORTABLE=1
-export POKELDN_DATA="${POKELDN_DATA:-$PROJECT_ROOT/.local-preview/portable}"
 export FLET_SERVER_IP=127.0.0.1
 export FLET_SERVER_PORT="${FLET_SERVER_PORT:-8590}"
 if [[ -x "$PROJECT_ROOT/.tools/dotnet/dotnet" ]]; then

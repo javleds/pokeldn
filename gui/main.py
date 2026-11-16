@@ -8,6 +8,18 @@ import zipfile
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Select portable storage before paths/settings can cache a different directory.
+if sys.argv[1:2] == ["--choose-portable-data"]:
+    from gui.portable_data_picker import cli
+    sys.exit(cli(sys.argv[2:]))
+
+if (os.environ.get("POKELDN_PORTABLE") == "1"
+        and sys.argv[1:2] != ["--apply-update"]):
+    from pathlib import Path
+    from pokeldn.app.portable_startup import configure_data
+    configure_data(Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[1])),
+                   interactive=sys.argv[1:2] not in (["--run"], ["--module"]))
+
 from pokeldn.app import paths  # noqa: E402,F401  (puts the repository and vendor/LDN on sys.path)
 
 if len(sys.argv) > 2 and sys.argv[1] in ("--run", "--module"):

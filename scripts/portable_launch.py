@@ -39,7 +39,8 @@ def main():
         print(f'No se pudo abrir pokeLDN: {error}', file=sys.stderr)
         return 1
     env = dict(os.environ, POKELDN_DISPATCHED='1')
-    env['POKELDN_DATA'] = str(Path(env['POKELDN_DATA']).expanduser().resolve())
+    if env.get('POKELDN_DATA'):
+        env['POKELDN_DATA'] = str(Path(env['POKELDN_DATA']).expanduser().resolve())
     env.pop('POKELDN_PKHEX', None)
     os.execvpe('bash', ['bash', str(selected / 'scripts/run_portable.sh'), *sys.argv[1:]], env)
 

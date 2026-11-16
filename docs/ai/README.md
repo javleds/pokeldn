@@ -69,3 +69,9 @@ actualización desde fuente fija del fork, helper independiente, versiones/venv
 preparados por separado y launcher estable. Datos originales preservados por ruta
 absoluta. [Operación y recuperación](../portable-build.md#actualización-desde-la-app).
 La publicación en GitHub y primera actualización real en Pi quedan a cargo del usuario.
+
+## Ubicación de datos (2026-11-16)
+[Spec 043](../specs/043-portable-data-location.md) unifica terminal/launcher/paquete
+antes de cargar settings. Reutiliza datos existentes y recuerda elección; ante dos
+carpetas pobladas pregunta sin fusionar. El launcher estable anterior requiere una
+actualización manual única; después las versiones comparten esta resolución.

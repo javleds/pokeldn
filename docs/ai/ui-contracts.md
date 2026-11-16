@@ -97,3 +97,10 @@ ni sesiones antes del handshake. Verificados icono, modal, progreso, detalles,
 error y estado de Ajustes con Computer Use y fixtures temporales.
 Galería mantiene ↑ hacia Ajustes aunque aparezca Actualizar; ←/→ navegan los
 botones habilitados de cabecera y ↓ vuelve al juego. Comprobado en cliente nativo.
+
+Carpeta de datos (spec 043): si hay dos ubicaciones pobladas y no hay selección ni
+override explícito, mostrar selector antes de cargar configuración/radio. Rutas
+completas, acción por carpeta y Cancelar; Tab/Enter y scroll mantienen acceso incluso
+con rutas largas a 800 × 480. No mostrar contenido personal. Guardar sólo preferencia,
+salir y continuar arranque principal; cancelar no crea perfil vacío. Errores de ruta
+visibles, sin fallback silencioso. Verificado en cliente nativo con carpetas temporales.
