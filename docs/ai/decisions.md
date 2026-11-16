@@ -299,3 +299,10 @@ manuales ni duplicarlos. Todo automático y listas explícitas mantienen contrat
 Recibidos/Banco siguen preservando el movimiento original de cada slot automático.
 Si una especie tiene pocos movimientos legales, no se fuerzan cuatro; se compacta
 solo si los huecos vuelven inválido el registro. Spec 037.
+
+## Contraste de tema portátil (2026-11-16)
+Reproducido por Computer Use con portable.main real: TextTheme personalizado sin
+color dejaba filas/títulos blancos sobre fondos claros. Fijar INK en cada estilo
+del tema, conservando colores explícitos. No modificar tema de escritorio.
+Entrenadores, Banco y diálogo de identificación verificados en cliente nativo
+a 800 × 480. Los previews futuros deben usar el tema/arranque real. Spec 038.

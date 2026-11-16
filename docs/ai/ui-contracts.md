@@ -66,3 +66,7 @@ Movimientos Automático (spec 037): generación nueva completa huecos incluso co
 manuales; cada manual se conserva y el resultado debe ser legal. Recibidos/Banco
 usan el movimiento original del slot. No convertir Automático en borrado implícito
 ni inventar cuatro movimientos cuando especie/nivel no los permite.
+
+Contraste (spec 038): TextTheme portátil declara INK explícito. No usar previews
+con un Theme simplificado como prueba del tema de producción. Verificar texto
+normal, títulos, etiquetas y acciones sobre superficies claras con cliente real.

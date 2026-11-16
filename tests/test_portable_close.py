@@ -93,6 +93,9 @@ def test_window_close_and_late_page_events_share_lifecycle(monkeypatch):
 
     async def scenario():
         await portable.main(page)
+        assert page.theme_mode == ft.ThemeMode.LIGHT
+        assert all(getattr(page.theme.text_theme, field.name).color == portable.INK
+                   for field in portable.fields(ft.TextTheme))
         listener = ui.setup_listener
         await page.window.on_event(SimpleNamespace(type=ft.WindowEventType.CLOSE))
         page.run_task.reset_mock()

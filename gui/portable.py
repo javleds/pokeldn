@@ -658,7 +658,7 @@ async def main(page: ft.Page):
     page.fonts = {**(page.fonts or {}), **theme.FONT_ASSETS}
     page.theme = ft.Theme(color_scheme_seed=RED, font_family="Arial",
                          text_theme=ft.TextTheme(**{
-                             field.name: ft.TextStyle(font_family_fallback=theme.FALLBACK_FONTS)
+                             field.name: ft.TextStyle(color=INK, font_family_fallback=theme.FALLBACK_FONTS)
                              for field in fields(ft.TextTheme)}),
                          icon_button_theme=ft.IconButtonTheme(style=ft.ButtonStyle(
                              visual_density=ft.VisualDensity.COMPACT, padding=0)))
