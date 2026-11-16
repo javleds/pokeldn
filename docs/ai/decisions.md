@@ -241,3 +241,10 @@ valores elegidos y guardados no vacíos. Spec 031.
 Todas las modalidades comparten OT completo, ID/SID según formato del juego e
 idioma abreviado, sin hashes en las opciones. Se conserva Base de pokeLDN y
 búsqueda temporal que no cambia selección. Spec 030.
+
+## Cierre nativo en Pi (2026-11-16)
+Log posterior a pruebas funcionales muestra FlutterEngineRemoveView y accesos
+GTK/FlBinaryMessenger después de destruir motor. No hay evidencia de fallo de
+radio o PKHeX. Cierre idempotente compartido detiene monitor/foco y listeners
+antes de destruir ventana; no asegura corregir bug interno del cliente Linux.
+Spec 027, comparación física pendiente; no actualizar Flet a ciegas.

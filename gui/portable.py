@@ -52,6 +52,8 @@ def label(key, fallback, **kwargs):
 class PortableView:
     def __init__(self, page, setup):
         self.page, self.setup = page, setup
+        self.closing = False
+        self.setup_listener = None
         self.screen = "progress" if setup.busy else "home" if setup.ready else "health"
         self.startup_pending = not setup.initialized or setup.checking
         self.buttons = []
@@ -106,9 +108,20 @@ class PortableView:
             self.focus_index = self.buttons.index(control)
 
     async def close(self, e):
-        if not self.setup.busy and not self.setup.session_busy:
-            self.disconnect_focus()
-            await self.page.window.destroy()
+        if self.closing or self.setup.session_busy:
+            return
+        if self.setup.busy:
+            self.go("progress")
+            return
+        self.closing = True
+        self.disconnect_focus()
+        self.resources.connected = False
+        self.resources.sync()
+        if self.setup_listener is not None:
+            self.setup.listeners.discard(self.setup_listener)
+        if self.team_view is not None:
+            self.team_view.dispose()
+        await self.page.window.destroy()
 
     def button(self, key, text, callback, primary=False, disabled=False, icon=None):
         index = len(self.buttons)
@@ -231,6 +244,8 @@ class PortableView:
             await self.focus()
 
     def changed(self):
+        if self.closing or not self.connected:
+            return
         if self.startup_pending and self.setup.initialized and not self.setup.checking:
             self.startup_pending = False
             if self.screen == "health" and self.setup.ready and not self.setup.busy:
@@ -610,19 +625,15 @@ async def main(page: ft.Page):
     page.on_keyboard_event = view.key
     async def window_event(e):
         if e.type == ft.WindowEventType.CLOSE:
-            if setup.session_busy:
-                return
-            if setup.busy:
-                view.go("progress")
-            else:
-                view.disconnect_focus()
-                await page.window.destroy()
+            await view.close(e)
     page.window.on_event = window_event
     # Notifications can originate from another web session: dispatch on this page.
     def changed():
-        page.run_task(refresh)
+        if not view.closing and view.connected:
+            page.run_task(refresh)
     async def refresh():
         view.changed()
+    view.setup_listener = changed
     setup.listeners.add(changed)
     async def disconnect(e):
         view.disconnect_focus()
@@ -630,6 +641,8 @@ async def main(page: ft.Page):
         view.resources.sync()
         setup.listeners.discard(changed)
     async def reconnect(e):
+        if view.closing:
+            return
         view.connected = True
         view.resources.connected = True
         view.resources.sync()
