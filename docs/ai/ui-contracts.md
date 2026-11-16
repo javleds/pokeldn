@@ -48,3 +48,6 @@ en cliente Flet local a 800 × 480 con fixtures temporales (2026-11-16).
 Comprobación inicial (spec 032): indicador animado y etapa visibles; aviso lento
 tras ocho segundos. Radio sigue reservada hasta finalizar; Entrenadores/Banco
 pueden consultarse y exportarse durante el check. Mutaciones conservan sus guards.
+
+Conexión (spec 033): código literal visible debajo del rol en el mismo botón,
+105 × 40, cabecera de 60 px. No añadir filas externas ni quitarlo durante sesión.

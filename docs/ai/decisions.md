@@ -270,3 +270,8 @@ animado, etapa y aviso tras ocho segundos, sin liberar acceso serie mientras
 sigue una operación. Listas locales y Modo local (motor listo) accesibles;
 instalación/revisión/intercambios siguen bloqueados. Se conservan reintentos y
 timeouts existentes; no se introduce cancelación insegura de threads. Spec 032.
+
+## Código visible en Conexión (2026-11-16)
+Mostrar rol y código en dos líneas dentro del botón existente de 105 × 40, sin
+modificar altura de cabecera. Preservar ceros; Sin código para opcional vacío y
+solo rol sin campo de código. Shared TeamView cubre todas las modalidades. Spec 033.

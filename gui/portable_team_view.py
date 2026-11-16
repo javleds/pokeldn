@@ -295,7 +295,16 @@ class TeamView:
         if self.basic_content is not None and self.tab == "basic" and m.slots[self.selected]:
             self._sync_move_choices()
         self._refresh_trainer(m.busy)
-        self.connection.content = 'Anfitrión' if m.role == 'host' else 'Unirse'
+        role = 'Anfitrión' if m.role == 'host' else 'Unirse'
+        has_code = any(f.kind in ('code', 'linkcode') or f.key in ('--code', '--link-code')
+                       for tool in m.tools.values() for f in tool.fields)
+        code = (m.code or 'Sin código') if has_code else ''
+        self.connection.content = ft.Column([
+            ft.Text(role, size=11 if has_code else 14, max_lines=1),
+            *([ft.Text(code, size=12, weight=ft.FontWeight.W_600, max_lines=1)] if has_code else []),
+        ], spacing=0, tight=True, alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER)
+        self.connection.tooltip = f'{role} · {code} · Configurar conexión' if has_code else f'{role} · Configurar conexión'
         for control in [self.back, self.connection, self.trainer, self.trainer_info, self.find,
                         self.clear_all, self.clear_one, *self.slot_buttons, *self.tab_buttons,
                         *self.editor_controls]:
