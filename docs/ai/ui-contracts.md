@@ -85,3 +85,15 @@ Conservar manuales/posiciones, búsqueda y X hacia Automático. No llenar Vacío
 ni desplazar movimientos para ocultar ilegalidad. Selector compartido comprobado
 en cliente nativo con fixture temporal a 800 × 480: menú legible y selección
 Vacío ↔ Automático; servicio/controladores verificados por pruebas separadas.
+
+Actualización (spec 042): icono dinámico inmediatamente a izquierda de Ajustes,
+sin nueva fila de cabecera. Deshabilitado durante radio/check/flash/escrituras.
+Confirmación antes de handoff; teclado/clics bloqueados mientras abre auxiliar.
+Ajustes reutiliza la línea de estado inicial para actualización/reintento cuando
+no hay check de hardware. El progreso de hardware mantiene prioridad.
+Auxiliar nativo independiente 800 × 480: etapa/indicador, detalles acotados de logs,
+error persistente y Cerrar disponible sólo al finalizar. Nueva UI no inicia checks
+ni sesiones antes del handshake. Verificados icono, modal, progreso, detalles,
+error y estado de Ajustes con Computer Use y fixtures temporales.
+Galería mantiene ↑ hacia Ajustes aunque aparezca Actualizar; ←/→ navegan los
+botones habilitados de cabecera y ↓ vuelve al juego. Comprobado en cliente nativo.

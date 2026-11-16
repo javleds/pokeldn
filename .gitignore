@@ -102,3 +102,7 @@ EVAL_RUN_NOTES.txt
 /gui/client/
 # The ARM-only Unicorn scripts/build_unicorn.py builds, with its source.
 /gui/unicorn/
+
+# Independently prepared portable updates and local updater logs.
+/.portable-updates/
+/.portable-ready.json

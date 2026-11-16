@@ -21,6 +21,16 @@ elif (($#)); then
     printf 'Uso: scripts/run_portable.sh [--build | --help]\n' >&2
     exit 2
 fi
+# Resolve data and SDK against the stable installation before switching versions.
+export POKELDN_INSTALL_ROOT="${POKELDN_INSTALL_ROOT:-$PROJECT_ROOT}"
+export POKELDN_DATA="${POKELDN_DATA:-$POKELDN_INSTALL_ROOT/.local-preview/portable}"
+if [[ -z "${DOTNET_ROOT:-}" && -x "$POKELDN_INSTALL_ROOT/.tools/dotnet/dotnet" ]]; then
+    export DOTNET_ROOT="$POKELDN_INSTALL_ROOT/.tools/dotnet"
+fi
+if [[ "${POKELDN_DISPATCHED:-}" != "1" ]]; then
+    exec python3 "$POKELDN_INSTALL_ROOT/scripts/portable_launch.py" "$@"
+fi
+unset POKELDN_DISPATCHED
 if [[ ! -x "$PROJECT_ROOT/.venv/bin/python" ]]; then
     printf 'Falta el entorno Python. Consulta %s/docs/portable-build.md\n' "$PROJECT_ROOT" >&2
     exit 1

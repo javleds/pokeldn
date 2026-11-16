@@ -9,6 +9,8 @@ import flet as ft
 
 from gui import theme
 from gui.portable_resources import ResourceOverlay
+from gui.portable_update_control import PortableUpdate
+from pokeldn.app import portable_update
 from gui.portable_setup import MAX_KEYS, SUPPORTED_RADIO_CHIPS, Setup, shared_setup
 from pokeldn.app.i18n import t as tr
 from pokeldn.app.catalog import GAMES
@@ -83,6 +85,7 @@ class PortableView:
             on_focus=lambda e: self.header_focus(self.settings_button),
             style=ft.ButtonStyle(side={ft.ControlState.FOCUSED: ft.BorderSide(2, CYAN)},
                                  shape=ft.RoundedRectangleBorder(radius=10)))
+        self.updater = PortableUpdate(self)
         self.close_button = ft.IconButton(
             icon=ft.Icons.CLOSE, tooltip=tr("portable.close", "Cerrar"),
             icon_color="white", visible=not page.web, on_click=self.close,
@@ -96,7 +99,7 @@ class PortableView:
         self.control = ft.Container(bgcolor=RED, padding=8, expand=True, content=ft.Column([
             ft.Container(ft.Row([lens, lamps, ft.Container(self.header_text, expand=True, padding=ft.Padding.only(left=14)),
                                  ft.Container(self.step, bgcolor=PAPER, border_radius=16, padding=ft.Padding(12, 4, 12, 4)),
-                                 self.settings_button, self.close_button]),
+                                 self.updater.button, self.settings_button, self.close_button]),
                          height=40, padding=ft.Padding(10, 0, 10, 0)),
             self.body,
             ft.Container(self.footer, height=24, alignment=ft.Alignment.CENTER),
@@ -110,7 +113,7 @@ class PortableView:
             self.focus_index = self.buttons.index(control)
 
     async def close(self, e):
-        if self.closing or self.setup.session_busy:
+        if self.closing or self.setup.session_busy or (self.updater.handoff and e is not None):
             return
         if self.setup.busy:
             self.go("progress")
@@ -216,6 +219,8 @@ class PortableView:
             await (target if not target.disabled else enabled[0]).focus()
 
     async def key(self, e):
+        if self.updater.handoff:
+            return
         if e.key == "?":
             self.resources.toggle()
             return
@@ -236,13 +241,19 @@ class PortableView:
             if self.screen == "home":
                 count = len(PORTABLE_GAMES)
                 if e.key == "Arrow Up":
-                    self.focus_index = count
+                    self.focus_index = self.buttons.index(self.settings_button)
                 elif e.key == "Arrow Down":
                     self.focus_index = next((i for i, game in enumerate(PORTABLE_GAMES)
                                              if game == self.selected_game), 0)
                 elif self.focus_index < count:
                     direction = -1 if e.key == "Arrow Left" else 1
                     self.focus_index = max(0, min(count - 1, self.focus_index + direction))
+                else:
+                    header = [i for i in range(count, len(self.buttons)) if not self.buttons[i].disabled]
+                    if header:
+                        position = header.index(self.focus_index) if self.focus_index in header else 0
+                        direction = -1 if e.key == 'Arrow Left' else 1
+                        self.focus_index = header[max(0, min(len(header) - 1, position + direction))]
                 await self.focus()
                 return
             direction = -1 if e.key in ("Arrow Up", "Arrow Left") else 1
@@ -253,6 +264,7 @@ class PortableView:
             await self.focus()
 
     def changed(self):
+        self.updater.sync()
         if self.closing or not self.connected:
             return
         if self.startup_pending and self.setup.initialized and not self.setup.checking:
@@ -297,7 +309,8 @@ class PortableView:
         self.settings_button.visible = self.screen in ("home", "ready", "team") and not s.busy
         self.close_button.disabled = s.busy or s.session_busy
         self.settings_button.disabled = s.session_busy
-        for control in (self.settings_button, self.close_button):
+        self.updater.sync()
+        for control in (self.updater.button, self.settings_button, self.close_button):
             if control.visible:
                 self.buttons.append(control)
         self.body.content = content
@@ -309,6 +322,7 @@ class PortableView:
                 self.header_text.update()
                 self.step.update()
                 self.footer.update()
+                self.updater.button.update()
                 self.settings_button.update()
                 self.close_button.update()
 
@@ -339,6 +353,13 @@ class PortableView:
             self.button("trainers", "Entrenadores", lambda: self.go("trainers"), disabled=s.busy or s.session_busy),
             self.button("bank", "Banco", lambda: self.go("bank"), disabled=s.busy or s.session_busy),
         ]))
+        if not self.page.web and not s.demo and not s.checking and not getattr(sys, 'frozen', False):
+            statuses.controls[0] = ft.Row([
+                ft.Container(self.updater.status, expand=True),
+                ft.IconButton(ft.Icons.REFRESH, tooltip='Comprobar actualizaciones',
+                              height=28, width=28, icon_size=20,
+                              on_click=self.updater.check, disabled=self.updater.handoff),
+            ], height=32)
         return self.layout(self.title("health", "Preparando tu Pokédex"), statuses, self.actions(primary, local, retry))
 
     def view_trainers(self):
@@ -701,5 +722,18 @@ async def main(page: ft.Page):
         view.changed()
     page.on_disconnect = disconnect
     page.on_connect = reconnect
+    # A trial version cannot touch the radio or accept input until the helper
+    # commits its startup handshake. A missing board is not an update failure.
+    trial = bool(os.environ.get("POKELDN_UPDATE_JOB"))
+    view.control.disabled = trial
     page.add(view.control)
+    if trial:
+        try:
+            await asyncio.to_thread(portable_update.acknowledge_startup)
+        except (portable_update.UpdateError, OSError):
+            await view.close(None)
+            return
+        view.control.disabled = False
+        page.update()
+    page.run_task(view.updater.check)
     await view.start()

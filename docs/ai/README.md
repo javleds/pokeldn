@@ -62,3 +62,10 @@ Ajustes incorpora [Entrenadores](../specs/028-portable-trainers.md) y
 JSON array y originales recibidos exportables sin pérdida, con edición de copia.
 Lista y confirmaciones comprobadas en cliente Flet local a 800 × 480; nuevos
 flujos de archivos y envío deben verificarse en Pi.
+
+## Actualización portátil desde main (2026-11-16)
+La rama portátil se integró localmente en main. [Spec 042](../specs/042-portable-self-update.md):
+actualización desde fuente fija del fork, helper independiente, versiones/venv
+preparados por separado y launcher estable. Datos originales preservados por ruta
+absoluta. [Operación y recuperación](../portable-build.md#actualización-desde-la-app).
+La publicación en GitHub y primera actualización real en Pi quedan a cargo del usuario.

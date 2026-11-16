@@ -330,3 +330,19 @@ legacy mantienen comportamiento. No compactar sobre un Vacío explícito ni
 reparar estadísticas ajenas para conseguir legalidad (incluidos AVs de Let's Go).
 La validación puede rechazar un conjunto vacío/ilegal. Fuente archivada e
 identidad se conservan; edición sobre copia. Spec 041.
+
+## Main y actualización portátil desde fuente (2026-11-16)
+El usuario autoriza integrar feature/custom-device en main y usar exclusivamente
+https://github.com/javleds/pokeldn.git, rama main, como fuente del self-update.
+Integración local fast-forward; publicación/despliegue sigue a cargo del usuario.
+El modo fuente ofrece icono a izquierda de Ajustes sólo para un descendiente
+remoto, sin bloqueo de UI. Ajustes muestra fallos de consulta/cambios locales y
+permite reintentar. No usar el updater de releases upstream para este fork.
+Helper independiente con ventana/progreso/logs: requiere ventana y bloqueo listos
+antes de cerrar principal. Preparar clone+venv+PKHeX separados; activar referencia
+atómica tras smoke y ventana nueva lista. Mantener UI nueva sin radio/interacción
+hasta commit de arranque. Si falla antes, detener proceso nuevo y reabrir anterior.
+El launcher estable preserva ruta absoluta de datos, SDK y contexto gráfico.
+No actualizar durante sesión/flash/check/escritura del banco. No reset/stash,
+sudo, firmware automático ni borrado de versiones/datos. Retener releases fallidas
+para diagnóstico; requieren espacio y limpieza manual. Spec 042.

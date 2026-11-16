@@ -264,3 +264,67 @@ La distribución Linux ARM64 debe construirse y validarse en ese host; una app d
 | Flet web sin web root | No aplicar el downgrade antiguo a 1.0.2; reinstalar `flet-web==1.0.5` desde PyPI oficial si se usa previsualización web |
 
 Los scripts `setup_pi.sh`, `preflight_pi.sh` y `deploy_pi.sh` de este repo se orientan al host Wi-Fi/Mystery Gift y pueden configurar NetworkManager, adaptadores o servicios. **No son requisitos para esta GUI con radio C6**.
+
+## Actualización desde la app
+
+El perfil portátil ejecutado desde fuente consulta `main` de
+`https://github.com/javleds/pokeldn.git` al abrir, en segundo plano. Si hay un commit
+posterior compatible con el historial local, aparece el icono de actualización a
+la izquierda de Ajustes. Ajustes muestra el estado y permite repetir la consulta.
+No se ofrece este flujo en la app empaquetada ni en vista web/demo.
+
+La primera instalación del actualizador necesita actualizar este checkout de forma
+manual. La rama main del fork debe estar publicada; integrar main localmente no
+publica cambios. Después, seguir abriendo `scripts/run_portable.sh` del directorio
+original, también desde el acceso `.desktop`. No apuntar accesos a carpetas internas
+de versiones. No hace falta `--build` para uso habitual.
+
+Al confirmar, un proceso auxiliar abre una ventana y obtiene un bloqueo exclusivo.
+La app principal se cierra; el auxiliar espera su salida, descarga el commit exacto,
+crea un entorno Python, instala dependencias, compila PKHeX y comprueba imports y
+los siete formatos del motor. Después abre una instancia de prueba sin permitir
+intercambios/check de radio, activa la versión al confirmar su ventana y libera la
+UI. Si falla antes de completar, conserva/restituye la referencia anterior e intenta
+reabrirla; la ventana de error y los logs permanecen disponibles.
+
+La preparación requiere Internet, SDK .NET 10 y espacio adicional para cada clone,
+venv y build. El mínimo preventivo es 2 GiB libres, no una garantía de que cualquier
+actualización quepa. Las versiones anteriores y fallidas se conservan; no hay
+limpieza automática en esta primera versión. No instala paquetes apt ni usa sudo.
+Firmware no se actualiza automáticamente: mantiene su flujo explícito habitual.
+
+### Datos y cambios locales
+
+El launcher fija `POKELDN_DATA` absoluto **antes** de seleccionar la versión activa.
+Sin una variable explícita conserva `<instalación original>/.local-preview/portable`.
+Si ya usabas otra carpeta, debes mantener esa misma variable en tu acceso directo.
+El updater no busca/migra otras carpetas ni copia claves, entrenadores o banco a la
+versión nueva. No borres datos ni reimportes claves para resolver un cambio de ruta.
+
+La comprobación rechaza archivos modificados y archivos nuevos no ignorados: no
+hace `reset`, `stash` ni sobrescritura. Un `log.txt` sin seguimiento puede bloquearla;
+conserva ese archivo fuera del checkout, o usa una ruta de log ignorada como `logs/`.
+`git status --short` explica lo pendiente. Historial divergente requiere revisión
+manual; si el local está adelantado respecto a main, no se degrada.
+
+### Archivos y recuperación
+
+Bajo la instalación original:
+
+- `.portable-updates/current.json`: referencia a la versión activa preparada.
+- `.portable-updates/releases/`: versiones con checkout y venv propios, rutas fijas.
+- `.portable-updates/jobs/<id>/`: solicitud, estado y logs `update.log`, `app.log`
+  y `helper.log` (dependencias/build, arranque y coordinación respectivamente).
+
+No mover un release: el venv contiene rutas absolutas. No borrar la versión activa
+ni la anterior mientras se actualiza. Una preparación fallida no modifica el
+checkout original. Si un puntero se daña, el launcher falla explícitamente en vez
+de abrir una ruta arbitraria. Para volver al checkout original manualmente, con
+app y helper cerrados, renombra `current.json` a un nombre de respaldo y abre el
+launcher original; no es necesario borrar releases ni datos. El rollback de código
+no revierte datos escritos por versiones futuras: los cambios de formato de datos
+necesitan una estrategia propia antes de publicarse.
+
+La verificación local usa repositorios Git temporales, fallos simulados y cliente
+Flet real a 800 × 480. No equivale a una actualización completa de red/pip/build en
+Raspberry Pi; esa primera validación en hardware sigue pendiente.
