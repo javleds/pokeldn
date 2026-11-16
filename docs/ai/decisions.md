@@ -306,3 +306,8 @@ color dejaba filas/títulos blancos sobre fondos claros. Fijar INK en cada estil
 del tema, conservando colores explícitos. No modificar tema de escritorio.
 Entrenadores, Banco y diálogo de identificación verificados en cliente nativo
 a 800 × 480. Los previews futuros deben usar el tema/arranque real. Spec 038.
+
+## Menús de filtros claros (2026-11-16)
+Los filtros de Entrenadores/Banco heredaban MenuStyle oscuro del helper desktop.
+Sobrescribir menú PAPER y texto INK con límites 280 × 160 solo en estas vistas.
+Equipo ya declara menú claro. Spec 039.

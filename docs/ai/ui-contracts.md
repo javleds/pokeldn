@@ -70,3 +70,6 @@ ni inventar cuatro movimientos cuando especie/nivel no los permite.
 Contraste (spec 038): TextTheme portátil declara INK explícito. No usar previews
 con un Theme simplificado como prueba del tema de producción. Verificar texto
 normal, títulos, etiquetas y acciones sobre superficies claras con cliente real.
+
+Filtros de bibliotecas (spec 039): menú flotante claro y opciones oscuras
+explícitas; altura 160 con scroll. No heredar PANEL oscuro del helper desktop.
