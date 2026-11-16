@@ -295,6 +295,9 @@ class TeamView:
         has_code = any(f.kind in ('code', 'linkcode') or f.key in ('--code', '--link-code')
                        for tool in m.tools.values() for f in tool.fields)
         code = (m.code or 'Sin código') if has_code else ''
+        if code.isdigit() and len(code) > 4:
+            middle = len(code) // 2
+            code = f'{code[:middle]}-{code[middle:]}'
         self.connection.content = ft.Column([
             ft.Text(role, size=11 if has_code else 14, max_lines=1),
             *([ft.Text(code, size=12, weight=ft.FontWeight.W_600, max_lines=1)] if has_code else []),

@@ -58,3 +58,6 @@ Actualización spec 034: botón de conexión sin label redundante, conservando
 Entrenador (spec 035): sin título de IDs ni botón de datos; selector + Encontrar
 en fila de 40 px alineada con Conexión, dentro de cabecera de 60 px. Conservar
 consulta temporal, identidad en opciones/tooltip y X hacia Base de pokeLDN.
+
+Código visible (spec 036): guion central únicamente para presentación de más
+de cuatro dígitos, preservando ceros y código original en modelo/transporte.

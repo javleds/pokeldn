@@ -286,3 +286,7 @@ Usuario autoriza retirar cabecera de IDs y botón Datos del entrenador. Mantener
 selector con identidad completa, tooltip y Encontrar mi entrenador. Base de
 pokeLDN conserva nombre/opción X y detalles en tooltip. No eliminar género ni
 idioma persistidos aunque desaparezca el modal. Spec 035 actualiza spec 030.
+
+## Separador visual de código (2026-11-16)
+Más de cuatro dígitos se presentan con guion central (0000-0000, 000-000);
+hasta cuatro sin guion. Código guardado/enviado intacto. Spec 036.
