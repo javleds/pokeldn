@@ -5,6 +5,37 @@ search_exclude: true
 ---
 # Decisiones acordadas
 
+## Investigación de portátil económico (2026-11-15)
+
+Separación posterior autorizada: repositorio local independiente `pokemon-handheld`,
+hermano de este fork, con Git e instrucciones propios. Se trasladó una copia inicial
+de la auditoría y evidencia; allí continúa el plan activo. La spec 021 de este fork
+queda como registro histórico. No compartir archivos mediante symlinks ni adoptar
+cambios automáticamente. Pi/Flet continúa su desarrollo y fixes de forma independiente.
+El nuevo repositorio fija la revisión PokeLDN de referencia; actualizaciones de
+protocolos/firmware/helper requieren revisión y pruebas explícitas. No se creó un
+tercer repositorio común ni se copiaron fuentes de aplicación en el bootstrap.
+
+Nueva dirección de investigación autorizada por el usuario: producto autónomo con
+host principalmente Rust, PKHeX.Core C# conservado mediante Native AOT si supera
+validación, Linux ARM64 candidato y ESP32-S3 dedicado a radio. Presupuesto objetivo
+menor a $1,000 MXN incluyendo electrónica, alimentación y carcasa; no es costo
+demostrado. Pi 5 y este fork permanecen como referencia funcional. No se inicia
+otro repositorio ni se sustituye la UI actual durante la auditoría.
+
+Se prioriza un Pokémon a la vez, pantalla pequeña y cruceta/botones; siete familias
+de juegos, identificación de entrenador y modificaciones/devoluciones. No se acepta
+catálogo pregenerado como reemplazo final de PKHeX. Se acepta trabajar con licencias
+upstream y posible comercialización futura, sin decisión de distribuir todavía.
+Actualizaciones automáticas deben pasar regresiones antes de promoción.
+
+Auditoría, evidencia y plan: [spec 021](../specs/021-rust-handheld-feasibility.md).
+PKHeX AOT compiló en Mac ARM64; 205 pruebas de servicio y 102 adicionales de
+recibidos/banco pasaron, con integración real y casos simulados. Linux, RAM mínima,
+BOM y consumo siguen pendientes. 128/256/512 MB son escenarios de prueba; 1 GB no
+es un mínimo medido. S3 usa USB nativo en el firmware auditado; UART necesita trabajo
+adicional. No prometer Switch 2 ni todos los roles por las pruebas de Mac.
+
 Fecha de referencia: 2026-11-12. «Acordado» significa dirección del producto; no significa implementación o compatibilidad física probada.
 
 ## Hardware objetivo

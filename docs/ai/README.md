@@ -9,6 +9,11 @@ Esta carpeta conserva los acuerdos del usuario para evitar redescubrir o desviar
 
 ## Orden de lectura
 
+- [Auditoría Rust / PKHeX AOT y portátil económico](../specs/021-rust-handheld-feasibility.md):
+  registro histórico de la investigación autorizada el 2026-11-15. El trabajo activo
+  continúa en el repositorio independiente `pokemon-handheld` (carpeta hermana local),
+  en `docs/research/001-feasibility.md`. Este fork conserva Pi/Flet y sus correcciones.
+
 - [Decisiones](decisions.md): hardware, alcance, experiencia de usuario y pendientes.
 - [Contratos de UI](ui-contracts.md): comportamientos acordados y regresiones que los cambios posteriores deben preservar.
 - [Desarrollo](development.md): componentes reales, comandos y criterios de validación.

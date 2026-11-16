@@ -1,5 +1,16 @@
 # Guía de trabajo del fork portátil
 
+## Separación de proyectos
+
+Este repositorio mantiene el producto Raspberry Pi / Python / Flet y sus fixes.
+La investigación y futura implementación económica Rust vive en el repositorio
+independiente `../pokemon-handheld`, con su propio `AGENTS.md`, Git y documentación.
+La separación fue autorizada el 2026-11-15; no implica migrar este fork ni sustituir
+su UI. Trabajar aquí no autoriza editar el proyecto hermano como efecto lateral.
+No añadir enlaces de archivos, dependencias de build o sincronización automática
+entre ambos. Los fixes de protocolo se trasladan mediante tareas y pruebas explícitas.
+La spec 021 es evidencia histórica; su plan activo continúa en el otro repositorio.
+
 ## Leer antes de implementar
 
 1. [Contexto y estado](docs/ai/README.md).
