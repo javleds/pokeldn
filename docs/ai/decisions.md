@@ -236,3 +236,8 @@ también la demora de arranque. Cambios locales sin despliegue SSH.
 Los códigos requeridos usan ceros según longitud del catálogo: 000 para Let's Go,
 00000000 para PLA/Z-A. Códigos opcionales o inexistentes no se fuerzan. Se conservan
 valores elegidos y guardados no vacíos. Spec 031.
+
+## Identidad compacta en cabeceras (2026-11-16)
+Todas las modalidades comparten OT completo, ID/SID según formato del juego e
+idioma abreviado, sin hashes en las opciones. Se conserva Base de pokeLDN y
+búsqueda temporal que no cambia selección. Spec 030.

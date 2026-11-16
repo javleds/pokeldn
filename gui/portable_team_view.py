@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import flet as ft
 
 from gui import theme
+from gui.portable_trainer_labels import trainer_details, trainer_label
 from gui.views.sprites import Sprite
 from gui.views.widgets import on_ui
 from pokeldn import console_trainer
@@ -118,15 +119,25 @@ class TeamView:
         self.connection.tooltip = 'Configurar conexión local'
         self.connection.height = self.mode_menu.height = 40
         trainer = ft.Row([self.trainer, self.trainer_info, self.find], spacing=2)
+        trainer_section = labeled('Entrenador', trainer, expand=True)
+        self.trainer_heading = trainer_section.controls[0]
+        self.trainer_heading.size = 11
         return ft.Row([self.back, labeled('Modalidad', self.mode_menu, width=150),
-                       labeled('Entrenador', trainer, expand=True),
+                       trainer_section,
                        labeled('Conexión', self.connection, width=105)], spacing=8, height=60,
                       vertical_alignment=ft.CrossAxisAlignment.END)
 
     def _refresh_trainer(self, locked):
         m = self.trainer_model
-        choices = [('base', 'Base de pokeLDN'), *[(key, f"{item['ot']} · {key[:6]}")
+        choices = [('base', 'Base de pokeLDN'), *[(key, trainer_label(self.model.game, item))
                    for key, item in m.profiles.items() if key != 'base']]
+        profile = m.profiles.get(m.selected_trainer) or getattr(m, 'trainer', None)
+        if profile is not None:
+            self.trainer_heading.value = trainer_details(self.model.game, profile)
+            self.trainer.tooltip = trainer_label(self.model.game, profile)
+        else:
+            self.trainer_heading.value = 'Entrenador'
+            self.trainer.tooltip = 'Entrenador de la oferta · El recibido conserva su propietario original'
         if choices != self.last_profiles:
             self._set_choices(self.trainer, choices)
             self.last_profiles = choices
