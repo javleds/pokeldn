@@ -61,3 +61,8 @@ consulta temporal, identidad en opciones/tooltip y X hacia Base de pokeLDN.
 
 Código visible (spec 036): guion central únicamente para presentación de más
 de cuatro dígitos, preservando ceros y código original en modelo/transporte.
+
+Movimientos Automático (spec 037): generación nueva completa huecos incluso con
+manuales; cada manual se conserva y el resultado debe ser legal. Recibidos/Banco
+usan el movimiento original del slot. No convertir Automático en borrado implícito
+ni inventar cuatro movimientos cuando especie/nivel no los permite.

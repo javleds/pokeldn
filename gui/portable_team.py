@@ -414,6 +414,7 @@ class Team:
         if revision != self._revision[index] or not (self.slots[index] or {}).get('species'):
             return
         draft, owner, version = self.normalized(self.slots[index]), deepcopy(self.trainer), VERSIONS.get(self.version, '')
+        move_slots = deepcopy(self.slots[index].get('options', {}).get('moves', []))
         self.states[index], self.errors[index] = 'validating', ''
         self.notify()
         try:
@@ -434,9 +435,17 @@ class Team:
                 pass
             if revision != self._revision[index]:
                 return
+            # Generation's Automatic slots request legal completion; an explicit
+            # moves list alone is intentionally exact in the shared service.
+            options = deepcopy(draft.get('options', {}))
+            if isinstance(move_slots, list) and len(move_slots) <= 4:
+                slots = [0 if value in (None, '', 0, '0') else int(value) for value in move_slots]
+                slots += [0] * (4 - len(slots))
+                if any(slots) and 0 in slots:
+                    options['auto_move_slots'] = slots
             info = await asyncio.to_thread(self.service.make, self.game, draft['species'], owner,
                                            int(draft['level']), bool(draft.get('shiny')), draft.get('nickname', ''),
-                                           version, draft.get('options', {}))
+                                           version, options)
             data = await asyncio.to_thread(Path(info['file']).read_bytes)
             checked = await asyncio.to_thread(self.service.check_bytes, self.game, data)
             legal = info.get('legal') is True and checked.get('legal') is True

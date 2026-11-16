@@ -291,7 +291,10 @@ static partial class Program
             // combinations are legal. Make/Check remain authoritative for the offer.
             var baseline = request.DeepClone().AsObject();
             if (baseline["options"] is JsonObject options)
+            {
                 options.Remove("moves");
+                options.Remove("auto_move_slots");
+            }
             var made = Make(game, baseline);
             var pk = Parse(game, Convert.FromBase64String((string)made["data"]!));
             var analysis = new LegalityAnalysis(pk);
@@ -494,6 +497,25 @@ static partial class Program
                 throw new ArgumentException("Level must be between 0 and 100.");
             var shiny = (bool?)request["shiny"] ?? false;
             var nickname = (string?)request["nickname"] ?? "";
+            ushort[]? autoSlots = null;
+            if (request["options"] is JsonObject requested && requested.ContainsKey("auto_move_slots"))
+            {
+                if (requested["auto_move_slots"] is not JsonArray slots || slots.Count != 4)
+                    throw new ArgumentException("Automatic moves require exactly four slots.");
+                autoSlots = new ushort[4];
+                for (var i = 0; i < slots.Count; i++)
+                {
+                    if (slots[i] is not JsonValue value || !value.TryGetValue<int>(out var id)
+                        || id < 0 || id > game.Blank().MaxMoveID)
+                        throw new ArgumentException("Unknown automatic-slot move.");
+                    autoSlots[i] = (ushort)id;
+                }
+                var explicitMoves = autoSlots.Where(m => m != 0).ToArray();
+                if (explicitMoves.Distinct().Count() != explicitMoves.Length)
+                    throw new ArgumentException("A Pokemon cannot know the same move twice.");
+                request = request.DeepClone().AsObject();
+                request["options"]!["moves"] = new JsonArray(explicitMoves.Select(m => (JsonNode?)(int)m).ToArray());
+            }
             var wish = Wish.From(request["options"] as JsonObject);
             if (wish.Alpha is true && game.Context is not (EntityContext.Gen8a or EntityContext.Gen9a))
                 throw new ArgumentException("Only Legends Arceus and Legends Z-A have Alpha Pokemon.");
@@ -648,6 +670,8 @@ static partial class Program
                         var la = Mend(pk, evolved, encounter, trainer, wish);
                         if (evolved || pk.CurrentLevel > built.CurrentLevel)
                             (pk, la) = Learned(pk, la, encounter, wish, game.Versions[0]);
+                        if (autoSlots is not null && wish.Unmet(pk, strings) is null)
+                            (pk, la) = CompleteAutomaticMoves(pk, la, wish, autoSlots, game.Versions[0]);
                         var unmet = wish.Unmet(pk, strings);
                         if (Accepted(pk, la) && unmet is null)
                         {
@@ -662,7 +686,7 @@ static partial class Program
                     }
                 }
             }
-            if (allowIllegal && forge)
+            if (allowIllegal && forge && autoSlots is null)
                 return Forged(game, request, blank, species, form, level, shiny, nickname, wish);
             var name = strings.specieslist[species];
             throw new InvalidOperationException(firstProblem is not null
@@ -764,6 +788,88 @@ static partial class Program
                     return (moved, result);
             }
             return (pk, la);
+        }
+
+        (PKM, LegalityAnalysis) CompleteAutomaticMoves(PKM pk, LegalityAnalysis la, Wish wish,
+                                                        ushort[] slots, GameVersion version)
+        {
+            // The explicit moves already selected a compatible encounter. Add only moves that
+            // remain legal together on that record; do not regenerate or replace requested moves.
+            var chosen = slots.Where(m => m != 0).ToList();
+            if (chosen.Count == 4)
+            {
+                pk.SetMoves(slots);
+                return (pk, Refresh(pk, wish));
+            }
+            var candidates = new List<ushort>();
+            var top = new ushort[4];
+            try
+            {
+                GameData.GetLearnSource(version).GetLearnset(pk.Species, pk.Form).SetEncounterMoves(pk.CurrentLevel, top);
+                candidates.AddRange(top);
+                var suggested = pk.Clone();
+                suggested.SetMoveset();
+                candidates.AddRange(suggested.Moves);
+            }
+            catch (IndexOutOfRangeException)
+            {
+                // The same learnset gap tolerated by Learned; explicit legal moves stay.
+            }
+            candidates.AddRange(pk.Moves);
+            var possible = LearnPossible.Get(pk, la.EncounterMatch, la.Info.EvoChainsAllGens, MoveSourceType.All);
+            for (ushort move = 1; move < possible.Length && move <= pk.MaxMoveID; move++)
+                if (possible[move])
+                    candidates.Add(move);
+            var dummied = MoveInfo.GetDummiedMovesHashSet(pk.Context);
+            // Legends records can require a full moveset, so a one-move baseline is
+            // not necessarily legal. Try the preferred complete set before adding singly.
+            var preferred = slots.ToArray();
+            var preferredMoves = new Queue<ushort>();
+            foreach (var move in candidates.Distinct())
+                if (move != 0 && !slots.Contains(move) && !MoveInfo.IsDummiedMove(dummied, move))
+                    preferredMoves.Enqueue(move);
+            for (var i = 0; i < preferred.Length; i++)
+                if (preferred[i] == 0 && preferredMoves.TryDequeue(out var move))
+                    preferred[i] = move;
+            var completed = pk.Clone();
+            completed.SetMoves(preferred);
+            Permit(completed);
+            var completedAnalysis = Refresh(completed, wish);
+            if (Accepted(completed, completedAnalysis) && wish.Unmet(completed, strings) is null)
+                return (completed, completedAnalysis);
+            var attempts = 0;
+            foreach (var move in candidates.Distinct())
+            {
+                if (chosen.Count == 4)
+                    break;
+                if (move == 0 || chosen.Contains(move) || MoveInfo.IsDummiedMove(dummied, move))
+                    continue;
+                if (++attempts > 64)
+                    break;
+                var trial = pk.Clone();
+                trial.SetMoves([.. chosen, move, .. new ushort[3 - chosen.Count]]);
+                Permit(trial);
+                var result = Refresh(trial, wish);
+                if (!Accepted(trial, result) || wish.Unmet(trial, strings) is not null)
+                    continue;
+                chosen.Add(move);
+                pk = trial;
+                la = result;
+            }
+            var final = slots.ToArray();
+            var automatic = new Queue<ushort>(chosen.Where(m => !slots.Contains(m)));
+            for (var i = 0; i < final.Length; i++)
+                if (final[i] == 0 && automatic.TryDequeue(out var move))
+                    final[i] = move;
+            pk.SetMoves(final);
+            Permit(pk);
+            var positioned = Refresh(pk, wish);
+            if (Accepted(pk, positioned))
+                return (pk, positioned);
+            // A species with too few legal moves may leave a hole before a chosen slot.
+            // Keep all requested moves and compact only when required by record legality.
+            pk.SetMoves([.. chosen, .. new ushort[4 - chosen.Count]]);
+            return (pk, Refresh(pk, wish));
         }
 
         // The method that turned the species before this one into the record's species, if PKHeX has one.

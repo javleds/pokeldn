@@ -200,7 +200,8 @@ class Service:
     def make(self, game: str, species: int, trainer: dict, level: int = 0, shiny: bool = False,
              nickname: str = "", version: str = "", options: dict | None = None) -> dict:
         """options: form, nature, ability, gender, held_item, ball (ids), friendship (0-255), moves (up to four
-        ids), alpha (Legends Arceus and Z-A; true or false), ivs / effort as {hp, atk, def, spa, spd, spe},
+        ids; exact list), auto_move_slots (four ids, zero requests legal completion during generation),
+        alpha (Legends Arceus and Z-A; true or false), ivs / effort as {hp, atk, def, spa, spd, spe},
         encounter (an encounters() key), sweet (Alcremie, 0-6), gigantamax and dynamax_level (Sword/Shield),
         tera (Scarlet/Violet, a type id or 99 for Stellar)."""
         reply = self._ask({"cmd": "make", "game": game, "species": species, "level": level, "shiny": shiny,

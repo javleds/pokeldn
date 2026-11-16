@@ -290,3 +290,12 @@ idioma persistidos aunque desaparezca el modal. Spec 035 actualiza spec 030.
 ## Separador visual de código (2026-11-16)
 Más de cuatro dígitos se presentan con guion central (0000-0000, 000-000);
 hasta cuatro sin guion. Código guardado/enviado intacto. Spec 036.
+
+## Automático mezclado con movimientos manuales (2026-11-16)
+En upstream options.moves es una lista exacta; vacíos no significan completar.
+El portátil envía intención adicional auto_move_slots solo al generar con mezcla
+de manuales y Automático. PKHeX completa con candidatos legales sin sustituir
+manuales ni duplicarlos. Todo automático y listas explícitas mantienen contrato.
+Recibidos/Banco siguen preservando el movimiento original de cada slot automático.
+Si una especie tiene pocos movimientos legales, no se fuerzan cuatro; se compacta
+solo si los huecos vuelven inválido el registro. Spec 037.
