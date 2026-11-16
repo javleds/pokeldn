@@ -37,6 +37,15 @@ def local_tools(game):
             if t.activity == 'trade' and dict(t.variant).get('link') == 'board'}
 
 
+def default_connection_code(game, tool):
+    if game == 'lgpe':
+        return '000'
+    for field in tool.fields:
+        if field.kind == 'code' and (field.required or field.default):
+            return '0' * field.length
+    return ''
+
+
 class TeamStore:
     """One atomically replaced private draft per game; no upstream settings migration."""
     def __init__(self, game, root=None):
@@ -131,7 +140,7 @@ class Team:
         self.version = saved.get('version', self.settings.version(game))
         if self.version not in dict(settings_module.VERSIONS.get(game, ())):
             self.version = self.settings.version(game)
-        self.code = saved.get('code', '')
+        self.code = saved.get('code', '') or default_connection_code(game, self.tools[self.role])
         if game == 'lgpe':
             from pokeldn.lgpe.session import code_picks
             raw = self.code or '000'
@@ -268,6 +277,7 @@ class Team:
             raise ValueError('Versión de juego no válida.')
         if self.game == 'lgpe' and (len(code) != 3 or any(c not in '0123456789' for c in code)):
             raise ValueError('El código de Let’s Go debe contener exactamente tres dígitos (0–9).')
+        code = code or default_connection_code(self.game, self.tools[role])
         changed = version != self.version
         self.role, self.version, self.code = role, version, code
         if changed:

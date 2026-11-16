@@ -231,3 +231,8 @@ Conservar el lock que impide desmontar galería con scroll/foco en vuelo.
 Spec 025 reproduce localmente el aviso de tarea destruida reportado en Pi.
 No atribuirlo a build, fuente ni radio; confirmar por prueba física si resuelve
 también la demora de arranque. Cambios locales sin despliegue SSH.
+
+## Códigos iniciales de conexión (2026-11-16)
+Los códigos requeridos usan ceros según longitud del catálogo: 000 para Let's Go,
+00000000 para PLA/Z-A. Códigos opcionales o inexistentes no se fuerzan. Se conservan
+valores elegidos y guardados no vacíos. Spec 031.
