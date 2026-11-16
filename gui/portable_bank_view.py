@@ -9,7 +9,7 @@ from gui import theme
 from gui.portable_bank import PortableBank
 from gui.portable_team_view import TeamView
 from gui.portable_trainer_labels import trainer_label
-from gui.portable_trainers import GAMES, GAME_FOLDERS
+from gui.portable_trainers import GAMES, GAME_FOLDERS, GAME_LABELS
 
 
 class BankView:
@@ -21,7 +21,7 @@ class BankView:
         self.opening = False
         self.query = ft.TextField(hint_text="Buscar Pokémon, apodo o entrenador", expand=True,
                                   height=42, text_size=14, on_change=self.refresh)
-        self.game = theme.dropdown([('', 'Todos los juegos'), *[(g, GAME_FOLDERS[g]) for g in GAMES]],
+        self.game = theme.dropdown([('', 'Todos los juegos'), *[(g, GAME_LABELS[g]) for g in GAMES]],
                                    '', on_select=self.refresh)
         self.game.width = 190
         # Flet 1.0.5 applies Dropdown.bgcolor over MenuStyle.bgcolor.
@@ -73,7 +73,8 @@ class BankView:
                                   on_click=partial(self.confirm_delete, entry), width=34),
                 ], spacing=0)
                 rows.append(ft.Container(ft.Row([
-                    ft.Text(GAME_FOLDERS[entry['game']], width=105, size=12),
+                    ft.Text(GAME_LABELS[entry['game']], width=105, size=12, max_lines=1,
+                            overflow=ft.TextOverflow.ELLIPSIS, tooltip=GAME_LABELS[entry['game']]),
                     ft.Column([ft.Text(title, size=14, max_lines=1, tooltip=title,
                                        overflow=ft.TextOverflow.ELLIPSIS),
                                ft.Text(identity, size=11, max_lines=1, tooltip=identity,

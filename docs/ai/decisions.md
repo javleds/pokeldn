@@ -315,3 +315,7 @@ Equipo ya declara menú claro. Spec 039.
 Corrección de spec 039: MenuStyle no bastaba; el cliente Flet sobrescribe su
 fondo con Dropdown.bgcolor. Fijados ambos en filtros. Computer Use confirmó
 menús abiertos legibles y filtrado funcional en Entrenadores y Banco.
+
+## Etiquetas de juegos en bibliotecas (2026-11-16)
+Columnas/filtros usan nombres compactos en español (Rojo/Verde, Espada/Escudo,
+etc.). GAME_LABELS separado de GAME_FOLDERS; no renombrar exports/IDs. Spec 040.

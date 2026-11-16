@@ -10,6 +10,10 @@ from pokeldn import console_trainer
 from pokeldn.app import settings
 
 GAMES = ('frlg', 'lgpe', 'swsh', 'bdsp', 'pla', 'sv', 'za')
+GAME_LABELS = {
+    'frlg': 'Rojo/Verde', 'lgpe': "Let's Go", 'swsh': 'Espada/Escudo',
+    'bdsp': 'Diamante/Perla', 'pla': 'Arceus', 'sv': 'Escarlata/Púrpura', 'za': 'Z-A',
+}
 GAME_FOLDERS = {
     'frlg': 'rojo_verde', 'lgpe': 'lets_go', 'swsh': 'espada_escudo',
     'bdsp': 'diamante_perla', 'pla': 'arceus', 'sv': 'escarlata_purpura', 'za': 'za',

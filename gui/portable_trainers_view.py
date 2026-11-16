@@ -6,7 +6,7 @@ from pathlib import Path
 import flet as ft
 
 from gui import theme
-from gui.portable_trainers import TrainerLibrary, GAMES, GAME_FOLDERS, LANGUAGES, IMPORT_LIMIT, export_filename
+from gui.portable_trainers import TrainerLibrary, GAMES, GAME_LABELS, LANGUAGES, IMPORT_LIMIT, export_filename
 from pokeldn import console_trainer
 
 
@@ -17,7 +17,7 @@ class TrainersView:
         self.picker = ft.FilePicker()
         self.query = ft.TextField(hint_text="Buscar entrenador, ID o idioma", expand=True,
                                   height=42, text_size=14, on_change=self.refresh)
-        self.game = theme.dropdown([('', 'Todos los juegos'), *[(g, GAME_FOLDERS[g]) for g in GAMES]],
+        self.game = theme.dropdown([('', 'Todos los juegos'), *[(g, GAME_LABELS[g]) for g in GAMES]],
                                    '', on_select=self.refresh)
         self.game.width = 190
         # Flet 1.0.5 applies Dropdown.bgcolor over MenuStyle.bgcolor.
@@ -74,7 +74,7 @@ class TrainersView:
                     ft.IconButton(ft.Icons.DELETE_OUTLINE, tooltip="Eliminar entrenador", width=32,
                                   on_click=lambda e, entry=entry: self.confirm_delete(entry)),
                 ], spacing=0)
-                rows.append(self.row([GAME_FOLDERS[entry['game']], p['ot'], tid, sid,
+                rows.append(self.row([GAME_LABELS[entry['game']], p['ot'], tid, sid,
                                       LANGUAGES[p['language']]], actions))
             self.rows.controls = rows or [ft.Text("No hay entrenadores para este filtro.", size=14)]
         except (ValueError, OSError) as error:
@@ -140,6 +140,6 @@ class TrainersView:
                 self.show(str(error), True)
         self.page.show_dialog(ft.AlertDialog(
             modal=True, title=ft.Text("¿Eliminar entrenador?"),
-            content=ft.Text(f"{entry['profile']['ot']} · {GAME_FOLDERS[entry['game']]}"),
+            content=ft.Text(f"{entry['profile']['ot']} · {GAME_LABELS[entry['game']]}"),
             actions=[ft.TextButton("Cancelar", on_click=lambda e: self.page.pop_dialog()),
                      ft.TextButton("Eliminar", on_click=remove)]))
