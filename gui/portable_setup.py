@@ -16,6 +16,7 @@ from pokeldn.app.redact import Redactor
 
 PERCENT = re.compile(r"(\d{1,3}(?:\.\d+)?)\s?%")
 MAX_KEYS = 1024 * 1024
+SUPPORTED_RADIO_CHIPS = ("ESP32-C6", "ESP32-S3")
 
 
 def validate_keys(path: str) -> str:
@@ -124,7 +125,7 @@ class Setup:
         port = choose_port(present, self.settings.radio_port)
         if port is None:
             self.radio_state = "ambiguous" if present else "missing"
-            self.radio_detail = ("Hay varias placas. Deja conectado solo el XIAO ESP32-C6."
+            self.radio_detail = ("Hay varias placas. Deja conectado solo el módulo que quieres configurar."
                                  if present else "Conecta el módulo con un cable USB de datos.")
             return
         self.device = port.device
@@ -150,12 +151,12 @@ class Setup:
                 self.radio_detail = "No se pudo abrir la placa. Revisa el cable y los permisos USB."
                 self.log(f"No se pudo identificar el chip: {type(error).__name__}: {error}")
                 return
-        if self.chip != "ESP32-C6":
+        if self.chip not in SUPPORTED_RADIO_CHIPS:
             self.radio_state = "unsupported"
-            self.radio_detail = "Este dispositivo requiere un XIAO ESP32-C6."
+            self.radio_detail = "Usa un ESP32-C6 o ESP32-S3 para este dispositivo."
         elif not port.native:
             self.radio_state = "error"
-            self.radio_detail = "Usa el puerto USB nativo del XIAO ESP32-C6."
+            self.radio_detail = f"Usa el puerto USB nativo del {self.chip}."
         else:
             self._save(radio_port=self.device)
 
@@ -192,7 +193,7 @@ class Setup:
 
     async def install(self, *, reinstall: bool = False):
         allowed = self.radio_state == "flash" or (reinstall and self.radio_state == "ready")
-        if self.busy or self.checking or self.session_busy or not allowed or self.chip != "ESP32-C6":
+        if self.busy or self.checking or self.session_busy or not allowed or self.chip not in SUPPORTED_RADIO_CHIPS:
             return
         self.busy = True
         self.error = ""
@@ -235,22 +236,25 @@ class Setup:
         if getattr(port, "serial_number", None) != self.serial_number:
             raise OSError("La placa conectada ha cambiado; repite la comprobación.")
         chip = await asyncio.to_thread(board.detect_chip, self.device)
-        if chip != "ESP32-C6":
-            raise ValueError("El chip conectado no es ESP32-C6.")
-        if not Path(board.FIRMWARE_C6).is_file():
+        if chip not in SUPPORTED_RADIO_CHIPS or chip != self.chip:
+            raise ValueError("El chip conectado ha cambiado o no es compatible; repite la comprobación.")
+        if not port.native:
+            raise ValueError(f"Usa el puerto USB nativo del {chip}.")
+        firmware = board.bundled_firmware(chip)
+        if not Path(firmware).is_file():
             loop = asyncio.get_running_loop()
             await asyncio.to_thread(board.download_firmware,
                                     lambda line: loop.call_soon_threadsafe(self.log, line))
-        if not Path(board.FIRMWARE_C6).is_file():
-            raise OSError("La release no contiene firmware para ESP32-C6.")
+        if not Path(firmware).is_file():
+            raise OSError(f"La release no contiene firmware para {chip}.")
         self.phase = "write"
-        self.log("Instalando firmware de radio para ESP32-C6.")
+        self.log(f"Instalando firmware de radio para {chip}.")
         env = dict(os.environ, NO_COLOR="1", PYTHONUNBUFFERED="1")
         env.pop("POKELDN_RADIO", None)
-        # Passing the C6 image also lets the existing flasher reject a swapped chip.
+        # Passing the selected image also lets the existing flasher reject a swapped chip.
         self.process = await asyncio.create_subprocess_exec(
             *runner.command("--module", "gui.board", "--port", self.device,
-                            "--kind", "radio", "--firmware", board.FIRMWARE_C6),
+                            "--kind", "radio", "--firmware", firmware),
             cwd=ROOT, env=env, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
         async for raw in self.process.stdout:
             line = raw.decode("utf-8", "replace").strip()
@@ -273,7 +277,7 @@ class Setup:
             if len(candidates) == 1:
                 try:
                     ident = await asyncio.to_thread(board.identify, candidates[0].device, False)
-                    if ident.current and ident.chip == "ESP32-C6":
+                    if ident.current and ident.chip == chip and candidates[0].native:
                         self.device = candidates[0].device
                         self._save(radio_port=self.device)
                         self.radio_state = "ready"

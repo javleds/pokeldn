@@ -194,3 +194,11 @@ El usuario recibió Pi 5 y aún no tiene alimentación/SD/teclado; propone estud
 
 ### Paquete Portable con identidad propia (spec 020)
 `build_portable.sh --app` reutiliza `pack_app.py --portable`: bundle separado, nombre pokeLDN Portable, ícono PNG existente convertido a icns para bundle y viewer macOS, firma ad hoc local y perfil nativo integrado antes de importar configuración/rutas. No requiere exports ni copia datos personales. Respeta POKELDN_DATA explícito; default por usuario pokeldn-portable, separado del escritorio y del preview del checkout. Sin builds opcionales permite cliente Flet estándar (sin arrastre) y Unicorn wheel; escritorio conserva requisitos anteriores. No cambia el ícono de run_portable.sh desde fuente. Pi/equipo limpio y notarización pendientes; evidencia concreta en spec 020.
+
+## Radio S3 en Pi (2026-11-15)
+
+Se amplía el asistente portátil a ESP32-S3 además de C6, por la placa DevKitC-1
+N16R8 del usuario. Se conserva USB nativo, instalación explícita y verificación
+del chip/firmware. El bloqueo anterior era exclusivo del asistente; el núcleo
+ya soporta S3. Spec 022. Intercambio físico y selector de archivos Flet en Pi
+pendientes; no atribuir el cierre Flutter a la radio sin reproducción.

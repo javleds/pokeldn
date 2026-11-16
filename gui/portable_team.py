@@ -542,7 +542,7 @@ class Team:
             run_settings = deepcopy(self.setup.settings)
             self._received_folder = run_settings.received
             run_settings.allow_illegal = False
-            run_settings.radio = ''  # portable only uses the configured C6
+            run_settings.radio = ''  # portable only uses the configured USB radio
             # Keep selected original trainer and use the matching displayed ID representation in the launcher.
             raw = self.trainer
             tid, sid = console_trainer.shown(self.game, raw['tid'], raw['sid'])

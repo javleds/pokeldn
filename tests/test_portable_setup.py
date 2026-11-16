@@ -1,5 +1,6 @@
 """Onboarding never treats a USB port or a flash exit code as a ready radio."""
 import asyncio
+import pytest
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -50,7 +51,7 @@ def test_valid_keys_are_private_and_persisted(monkeypatch, tmp_path):
 def test_check_rejects_another_chip(monkeypatch, tmp_path):
     state = real_state(monkeypatch, tmp_path)
     monkeypatch.setattr(board, "ports", lambda: [port()])
-    monkeypatch.setattr(board, "identify", lambda *a: SimpleNamespace(chip="ESP32-S3", current=True, firmware_version="1"))
+    monkeypatch.setattr(board, "identify", lambda *a: SimpleNamespace(chip="ESP32-S2", current=True, firmware_version="1"))
     asyncio.run(state.check_radio())
     assert state.radio_state == "unsupported"
 
@@ -104,10 +105,11 @@ def test_logs_are_bounded_and_redacted():
     assert all("/Users/example" not in line for line in state.logs)
 
 
-def test_compatible_firmware_is_not_reinstalled(monkeypatch, tmp_path):
+@pytest.mark.parametrize("chip", setup.SUPPORTED_RADIO_CHIPS)
+def test_compatible_firmware_is_not_reinstalled(monkeypatch, tmp_path, chip):
     state = real_state(monkeypatch, tmp_path)
     monkeypatch.setattr(board, "ports", lambda: [port()])
-    monkeypatch.setattr(board, "identify", lambda *a: SimpleNamespace(chip="ESP32-C6", current=True, firmware_version="1"))
+    monkeypatch.setattr(board, "identify", lambda *a: SimpleNamespace(chip=chip, current=True, firmware_version="1"))
     install = AsyncMock()
     monkeypatch.setattr(state, "_install_real", install)
     async def run():
@@ -118,15 +120,16 @@ def test_compatible_firmware_is_not_reinstalled(monkeypatch, tmp_path):
     install.assert_not_called()
 
 
-def test_flash_checks_response_after_successful_write(monkeypatch, tmp_path):
+@pytest.mark.parametrize("chip", setup.SUPPORTED_RADIO_CHIPS)
+def test_flash_checks_response_after_successful_write(monkeypatch, tmp_path, chip):
     state = real_state(monkeypatch, tmp_path)
-    state.device, state.chip, state.serial_number = "/dev/test", "ESP32-C6", "one"
+    state.device, state.chip, state.serial_number = "/dev/test", chip, "one"
     image = tmp_path / "c6.bin"
     image.write_bytes(b"fixture")
-    monkeypatch.setattr(board, "FIRMWARE_C6", str(image))
+    monkeypatch.setattr(board, "FIRMWARE_C6" if chip == "ESP32-C6" else "FIRMWARE_S3", str(image))
     monkeypatch.setattr(board, "ports", lambda: [port()])
-    monkeypatch.setattr(board, "detect_chip", lambda *a: "ESP32-C6")
-    monkeypatch.setattr(board, "identify", lambda *a: SimpleNamespace(current=False, chip="ESP32-C6"))
+    monkeypatch.setattr(board, "detect_chip", lambda *a: chip)
+    monkeypatch.setattr(board, "identify", lambda *a: SimpleNamespace(current=False, chip=chip))
     monkeypatch.setattr(setup.asyncio, "sleep", AsyncMock())
     async def run():
         reader = asyncio.StreamReader()
@@ -151,9 +154,10 @@ def test_closed_ui_does_not_interrupt_logging():
     assert "writing" in state.logs[-1]
 
 
-def test_ready_reinstall_requires_explicit_opt_in(monkeypatch, tmp_path):
+@pytest.mark.parametrize("chip", setup.SUPPORTED_RADIO_CHIPS)
+def test_ready_reinstall_requires_explicit_opt_in(monkeypatch, tmp_path, chip):
     state = real_state(monkeypatch, tmp_path)
-    state.radio_state, state.chip = 'ready', 'ESP32-C6'
+    state.radio_state, state.chip = 'ready', chip
     flash = AsyncMock()
     monkeypatch.setattr(state, '_install_real', flash)
     asyncio.run(state.install())
@@ -166,7 +170,70 @@ def test_reinstall_does_not_bypass_missing_or_wrong_hardware(monkeypatch, tmp_pa
     state = real_state(monkeypatch, tmp_path)
     flash = AsyncMock()
     monkeypatch.setattr(state, '_install_real', flash)
-    for status, chip in [('missing','ESP32-C6'), ('error','ESP32-C6'), ('ready','ESP32-S3')]:
+    for status, chip in [('missing','ESP32-C6'), ('error','ESP32-C6'), ('ready','ESP32-S2')]:
         state.radio_state, state.chip = status, chip
         asyncio.run(state.install(reinstall=True))
     flash.assert_not_called()
+
+@pytest.mark.parametrize("chip", setup.SUPPORTED_RADIO_CHIPS)
+def test_unflashed_radio_uses_detected_chip(monkeypatch, tmp_path, chip):
+    state = real_state(monkeypatch, tmp_path)
+    monkeypatch.setattr(board, "ports", lambda: [port()])
+    def no_radio(*args):
+        raise OSError("no firmware")
+    monkeypatch.setattr(board, "identify", no_radio)
+    monkeypatch.setattr(board, "detect_chip", lambda *a: chip)
+    asyncio.run(state.check_radio())
+    assert state.radio_state == "flash"
+    assert state.chip == chip
+    assert state.settings.radio_port == "/dev/test"
+
+
+@pytest.mark.parametrize("chip", setup.SUPPORTED_RADIO_CHIPS)
+def test_uart_is_rejected(monkeypatch, tmp_path, chip):
+    state = real_state(monkeypatch, tmp_path)
+    monkeypatch.setattr(board, "ports", lambda: [board.Port("/dev/test", "UART", "one", False)])
+    monkeypatch.setattr(board, "identify", lambda *a: SimpleNamespace(chip=chip, current=True, firmware_version="1"))
+    asyncio.run(state.check_radio())
+    assert state.radio_state == "error"
+    assert "USB nativo" in state.radio_detail
+    assert not state.settings.radio_port
+
+
+@pytest.mark.parametrize("chip", setup.SUPPORTED_RADIO_CHIPS)
+def test_install_selects_image_and_requires_matching_response(monkeypatch, tmp_path, chip):
+    state = real_state(monkeypatch, tmp_path)
+    state.device, state.chip, state.serial_number = "/dev/test", chip, "one"
+    state.radio_state = "flash"
+    image = tmp_path / (chip + ".bin")
+    image.write_bytes(b"fixture")
+    monkeypatch.setattr(board, "FIRMWARE_C6" if chip == "ESP32-C6" else "FIRMWARE_S3", str(image))
+    monkeypatch.setattr(board, "ports", lambda: [port()])
+    monkeypatch.setattr(board, "detect_chip", lambda *a: chip)
+    monkeypatch.setattr(board, "identify", lambda *a: SimpleNamespace(chip=chip, current=True))
+    monkeypatch.setattr(setup.asyncio, "sleep", AsyncMock())
+    async def run():
+        reader = asyncio.StreamReader()
+        reader.feed_eof()
+        launch = AsyncMock(return_value=SimpleNamespace(stdout=reader, wait=AsyncMock(return_value=0)))
+        monkeypatch.setattr(setup.asyncio, "create_subprocess_exec", launch)
+        await state.install()
+        args = launch.call_args.args
+        assert args[args.index("--firmware") + 1] == str(image)
+    asyncio.run(run())
+    assert state.radio_state == "ready"
+    assert state.phase == "done"
+
+
+@pytest.mark.parametrize("native,detected", [(True, "ESP32-C6"), (False, "ESP32-S3")])
+def test_install_rejects_changed_chip_or_uart_before_write(monkeypatch, tmp_path, native, detected):
+    state = real_state(monkeypatch, tmp_path)
+    state.device, state.chip, state.serial_number = "/dev/test", "ESP32-S3", "one"
+    state.radio_state = "flash"
+    monkeypatch.setattr(board, "ports", lambda: [board.Port("/dev/test", "USB", "one", native)])
+    monkeypatch.setattr(board, "detect_chip", lambda *a: detected)
+    launch = AsyncMock()
+    monkeypatch.setattr(setup.asyncio, "create_subprocess_exec", launch)
+    asyncio.run(state.install())
+    launch.assert_not_called()
+    assert state.phase == "error"

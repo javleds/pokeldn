@@ -9,7 +9,7 @@ import flet as ft
 
 from gui import theme
 from gui.portable_resources import ResourceOverlay
-from gui.portable_setup import MAX_KEYS, Setup, shared_setup
+from gui.portable_setup import MAX_KEYS, SUPPORTED_RADIO_CHIPS, Setup, shared_setup
 from pokeldn.app.i18n import t as tr
 from pokeldn.app.catalog import GAMES
 
@@ -352,7 +352,7 @@ class PortableView:
         self.step.value = "2 de 2" + (" · DEMO" if s.demo else "")
         state = "Conectado por USB" if s.radio_state in ("ready", "flash") else "Revisa la conexión USB"
         info = ft.Column([self.card(ft.Row([ft.Icon(ft.Icons.MEMORY, size=50, color=INK), ft.Column([
-                    label("board_name", "XIAO ESP32-C6", weight=ft.FontWeight.W_700),
+                    label("board_name", s.chip or "ESP32-C6 / ESP32-S3", weight=ft.FontWeight.W_700),
                     ft.Text(state, color=GREEN if s.radio_state == "ready" else MUTED, size=18),
                 ], spacing=8)])), ft.Text(s.radio_detail, size=18, color=INK)], spacing=12, scroll=ft.ScrollMode.AUTO)
         if s.radio_state == "flash":
@@ -372,12 +372,12 @@ class PortableView:
         s = self.setup
         self.header_text.value = "CONFIRMAR REINSTALACIÓN"
         info = ft.Column([
-            self.card(ft.Column([label("board_name", "XIAO ESP32-C6", weight=ft.FontWeight.W_700),
+            self.card(ft.Column([label("board_name", s.chip or "ESP32-C6 / ESP32-S3", weight=ft.FontWeight.W_700),
                                  ft.Text(s.device if not s.demo else "Placa simulada · DEMO", size=16, color=MUTED)], spacing=8)),
             label("reinstall_explain", "La placa ya tiene firmware compatible. Esta acción volverá a escribir el firmware de radio disponible."),
             label("reinstall_warning", "Mantén la placa conectada y el dispositivo encendido hasta terminar."),
         ], spacing=12, scroll=ft.ScrollMode.AUTO)
-        allowed = s.radio_state == "ready" and s.chip == "ESP32-C6" and not s.busy and not s.checking
+        allowed = s.radio_state == "ready" and s.chip in SUPPORTED_RADIO_CHIPS and not s.busy and not s.checking
         return self.layout(self.title("reinstall_title", "¿Reinstalar firmware?"), info, self.actions(
             self.button("cancel", "Cancelar", lambda: self.go("board"), True),
             self.button("confirm_reinstall", "Confirmar reinstalación", lambda: self.install(reinstall=True), disabled=not allowed)))
@@ -400,7 +400,7 @@ class PortableView:
         self.progress_bar = ft.ProgressBar(value=s.progress, expand=True, height=18, border_radius=9, color=GREEN, bgcolor="#CBD2D1")
         self.percent_label = ft.Text(percentage, size=24, color=INK, weight=ft.FontWeight.W_700)
         info = ft.Column([
-            ft.Row([ft.Icon(ft.Icons.MEMORY, size=42, color=INK), label("board_name", "XIAO ESP32-C6", weight=ft.FontWeight.W_700)]),
+            ft.Row([ft.Icon(ft.Icons.MEMORY, size=42, color=INK), label("board_name", s.chip or "ESP32-C6 / ESP32-S3", weight=ft.FontWeight.W_700)]),
             self.card(ft.Column([self.phase_label,
                      ft.Row([self.progress_bar, self.percent_label]),
                      label("keep_connected", "Mantén el módulo conectado y el dispositivo encendido.")], spacing=15)),
