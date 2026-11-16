@@ -104,3 +104,9 @@ completas, acción por carpeta y Cancelar; Tab/Enter y scroll mantienen acceso i
 con rutas largas a 800 × 480. No mostrar contenido personal. Guardar sólo preferencia,
 salir y continuar arranque principal; cancelar no crea perfil vacío. Errores de ruta
 visibles, sin fallback silencioso. Verificado en cliente nativo con carpetas temporales.
+
+Accesos directos (spec 044): icono antes de Update/Ajustes sin nueva fila.
+Menú claro con dos acciones; deshabilitar durante actividad y escritura.
+Conservar navegación de cabecera; el menú recibe sus propias flechas/Escape.
+CUA a 800 × 480 con y sin Update: clic/Enter abre y Escape cierra sin salir
+de galería. Resultado modal con ruta, datos y advertencias. Linux real pendiente.

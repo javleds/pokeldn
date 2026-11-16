@@ -377,3 +377,15 @@ Esto actualiza juntos `run_portable.sh` y `portable_launch.py`; no borres
 también debe contener la corrección; el self-update puede obtenerlo. Mientras el
 launcher estable sea el anterior, el override que genera seguirá siendo respetado.
 Este cambio sólo afecta Python/arranque: no necesita recompilar PKHeX.
+
+### Crear accesos desde la app
+
+En Linux, abre **Accesos directos** (a izquierda de Update o Ajustes) y elige
+**Agregar al menú** o **Agregar al escritorio**. Se crea un archivo del usuario
+con icono y launcher estable; abrirlo no recompila. Se respeta el escritorio XDG.
+El acceso captura la carpeta de datos activa explícitamente, conservando claves,
+entrenadores y banco. Si cambias de carpeta, vuelve a agregar los accesos.
+Una entrada anterior distinta se respalda con sufijo .bak; repetir sin cambios
+no crea copias adicionales. El diálogo muestra ruta y advertencias.
+El escritorio puede exigir **Permitir ejecutar/lanzar** en su menú contextual.
+No requiere sudo. Disponible sólo en modo portátil Linux desde fuente.

@@ -361,3 +361,10 @@ El launcher estable 042 sintetizaba POKELDN_DATA sin marcador de procedencia; no
 posible distinguirlo de un override real. Necesita actualizar manualmente una vez
 el checkout original (shell y dispatcher), sin borrar pointer ni datos. No aplicar
 heurísticas que cambien un override explícito por parecerse a la ruta antigua.
+
+## Accesos directos (2026-11-16)
+Spec 044: Linux nativo desde fuente ofrece Agregar al menú y Agregar al escritorio
+a izquierda de Update/Ajustes. Archivos reales por usuario, root estable y DATA
+actual explícitos, sin build al abrir. Resolver escritorio por XDG, sin sudo.
+Respaldar entradas distintas antes de reemplazar. Si cambia la carpeta de datos,
+registrar de nuevo: la ruta capturada tiene prioridad sobre la preferencia global.

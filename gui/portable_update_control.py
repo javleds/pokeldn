@@ -68,15 +68,8 @@ class PortableUpdate:
             self.checked = True
         if self.view.connected and not self.view.closing:
             self.sync()
-            buttons = self.view.buttons
-            focused = buttons[self.view.focus_index] if self.view.focus_index < len(buttons) else None
-            if self.button in buttons:
-                buttons.remove(self.button)
-            if self.button.visible:
-                anchor = self.view.settings_button if self.view.settings_button in buttons else self.view.close_button
-                buttons.insert(buttons.index(anchor) if anchor in buttons else len(buttons), self.button)
-            if focused in buttons:
-                self.view.focus_index = buttons.index(focused)
+            self.view.shortcuts.sync()
+            self.view.sync_header_navigation()
             self.view.page.update()
 
     def confirm(self, e=None):

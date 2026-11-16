@@ -10,6 +10,7 @@ import flet as ft
 from gui import theme
 from gui.portable_resources import ResourceOverlay
 from gui.portable_update_control import PortableUpdate
+from gui.portable_shortcuts import ShortcutMenu
 from pokeldn.app import portable_update
 from gui.portable_setup import MAX_KEYS, SUPPORTED_RADIO_CHIPS, Setup, shared_setup
 from pokeldn.app.i18n import t as tr
@@ -86,6 +87,7 @@ class PortableView:
             style=ft.ButtonStyle(side={ft.ControlState.FOCUSED: ft.BorderSide(2, CYAN)},
                                  shape=ft.RoundedRectangleBorder(radius=10)))
         self.updater = PortableUpdate(self)
+        self.shortcuts = ShortcutMenu(self)
         self.close_button = ft.IconButton(
             icon=ft.Icons.CLOSE, tooltip=tr("portable.close", "Cerrar"),
             icon_color="white", visible=not page.web, on_click=self.close,
@@ -99,7 +101,7 @@ class PortableView:
         self.control = ft.Container(bgcolor=RED, padding=8, expand=True, content=ft.Column([
             ft.Container(ft.Row([lens, lamps, ft.Container(self.header_text, expand=True, padding=ft.Padding.only(left=14)),
                                  ft.Container(self.step, bgcolor=PAPER, border_radius=16, padding=ft.Padding(12, 4, 12, 4)),
-                                 self.updater.button, self.settings_button, self.close_button]),
+                                 self.shortcuts.control, self.updater.button, self.settings_button, self.close_button]),
                          height=40, padding=ft.Padding(10, 0, 10, 0)),
             self.body,
             ft.Container(self.footer, height=24, alignment=ft.Alignment.CENTER),
@@ -107,6 +109,16 @@ class PortableView:
         self.resources = ResourceOverlay(page)
         self.control = ft.Stack([self.control, self.resources.control], expand=True)
         self.render(update=False)
+
+    def sync_header_navigation(self):
+        controls = [self.shortcuts.button, self.updater.button, self.settings_button, self.close_button]
+        focused = self.buttons[self.focus_index] if self.focus_index < len(self.buttons) else None
+        self.buttons = [button for button in self.buttons if button not in controls]
+        if self.shortcuts.control.visible:
+            self.buttons.append(self.shortcuts.button)
+        self.buttons.extend(button for button in controls[1:] if button.visible)
+        if focused in self.buttons:
+            self.focus_index = self.buttons.index(focused)
 
     def header_focus(self, control):
         if control in self.buttons:
@@ -219,7 +231,7 @@ class PortableView:
             await (target if not target.disabled else enabled[0]).focus()
 
     async def key(self, e):
-        if self.updater.handoff:
+        if self.updater.handoff or self.shortcuts.menu_open:
             return
         if e.key == "?":
             self.resources.toggle()
@@ -265,6 +277,7 @@ class PortableView:
 
     def changed(self):
         self.updater.sync()
+        self.shortcuts.sync()
         if self.closing or not self.connected:
             return
         if self.startup_pending and self.setup.initialized and not self.setup.checking:
@@ -310,9 +323,8 @@ class PortableView:
         self.close_button.disabled = s.busy or s.session_busy
         self.settings_button.disabled = s.session_busy
         self.updater.sync()
-        for control in (self.updater.button, self.settings_button, self.close_button):
-            if control.visible:
-                self.buttons.append(control)
+        self.shortcuts.sync()
+        self.sync_header_navigation()
         self.body.content = content
         self.rendered_screen, self.rendered_busy = self.screen, s.busy
         if update:
@@ -322,6 +334,7 @@ class PortableView:
                 self.header_text.update()
                 self.step.update()
                 self.footer.update()
+                self.shortcuts.control.update()
                 self.updater.button.update()
                 self.settings_button.update()
                 self.close_button.update()
