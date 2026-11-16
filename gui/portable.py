@@ -60,6 +60,7 @@ class PortableView:
         self.focus_index = 0
         self.local = False
         self.team_view = None
+        self.trainers_view = None
         self.selected_game = None
         self.game_list = None
         self.gallery_navigation = asyncio.Lock()
@@ -195,7 +196,7 @@ class PortableView:
                 await self._focus()
 
     async def _focus(self):
-        if self.screen == 'team':
+        if self.screen in ('team', 'trainers', 'bank'):
             return
         enabled = [b for b in self.buttons if not b.disabled]
         if enabled:
@@ -210,7 +211,7 @@ class PortableView:
         if e.key == "?":
             self.resources.toggle()
             return
-        if self.screen == 'team':
+        if self.screen in ('team', 'trainers', 'bank'):
             # Native input/dropdown navigation owns arrows; Escape must not dismiss
             # a confirmation and navigate away in the same event.
             return
@@ -325,7 +326,16 @@ class PortableView:
         local = self.button("local", "Modo local", self.enter_local, disabled=s.checking or not s.engine_ready)
         retry = (self.button("module", "Módulo", lambda: self.go("board"), disabled=s.checking)
                  if s.radio_state == "ready" else self.button("retry", "Revisar", self.recheck, disabled=s.checking))
+        statuses.controls.append(ft.Row([
+            self.button("trainers", "Entrenadores", lambda: self.go("trainers"), disabled=s.checking or s.session_busy),
+        ]))
         return self.layout(self.title("health", "Preparando tu Pokédex"), statuses, self.actions(primary, local, retry))
+
+    def view_trainers(self):
+        from gui.portable_trainers_view import TrainersView
+        self.header_text.value = "CONFIGURACIÓN · ENTRENADORES"
+        self.trainers_view = TrainersView(self)
+        return self.trainers_view.control
 
     def enter_local(self):
         self.local = True

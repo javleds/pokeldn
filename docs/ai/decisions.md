@@ -248,3 +248,10 @@ GTK/FlBinaryMessenger después de destruir motor. No hay evidencia de fallo de
 radio o PKHeX. Cierre idempotente compartido detiene monitor/foco y listeners
 antes de destruir ventana; no asegura corregir bug interno del cliente Linux.
 Spec 027, comparación física pendiente; no actualizar Flet a ciegas.
+
+## Facility Entrenadores (2026-11-16)
+Ajustes del fork Pi/Flet incorpora lista global filtrable/buscable de perfiles
+por juego, con eliminación confirmada y JSON array individual/bulk. Se preservan
+IDs originales de 16 bits, género, idioma y versión conocida; nombres exportados
+seguros y carpeta por familia de juego. Reutiliza TeamStore y selectores.
+No toca el repositorio económico. Spec 028.
