@@ -166,7 +166,9 @@ class PortableView:
     def status(self, key, text, state, detail):
         color = GREEN if state == "ready" else AMBER
         icon = ft.Icons.CHECK_CIRCLE if state == "ready" else ft.Icons.INFO_OUTLINE
-        return ft.Container(ft.Row([ft.Icon(icon, color=color, size=24),
+        indicator = (ft.ProgressRing(width=24, height=24, stroke_width=3, color=AMBER)
+                     if state == "checking" else ft.Icon(icon, color=color, size=24))
+        return ft.Container(ft.Row([indicator,
                             ft.Container(label(key, text, weight=ft.FontWeight.W_600), expand=True),
                             ft.Text(detail, size=16, color=color)]),
                             bgcolor="#E4E7E5", border_radius=9, padding=ft.Padding(12, 9, 12, 9))
@@ -315,11 +317,12 @@ class PortableView:
 
     def view_health(self):
         s = self.setup
-        checking = "Comprobando…" if s.checking else "Listo"
         statuses = ft.Column([
-            label("health_hint", "Comprobamos que todo esté listo."),
-            self.status("engine", "Motor Pokémon", "ready" if s.engine_ready else "error",
-                        checking if s.engine_ready or s.checking else "Revisar"),
+            ft.Text(("La comprobación está tardando más de lo habitual. " if s.check_slow else "")
+                    + s.check_detail if s.checking else "Comprobamos que todo esté listo.",
+                    size=14, max_lines=2),
+            self.status("engine", "Motor Pokémon", "checking" if s.checking and not s.engine_ready else "ready" if s.engine_ready else "error",
+                        "Listo" if s.engine_ready else "Comprobando…" if s.checking else "Revisar"),
             self.status("keys", "Claves de la consola", "ready" if not s.keys_error else "missing",
                         "Listas" if not s.keys_error else "Pendientes"),
             self.status("radio", "Módulo inalámbrico", s.radio_state,
@@ -329,12 +332,12 @@ class PortableView:
             statuses.controls.append(ft.Text(s.engine_error, size=15, color=AMBER))
         primary = self.button("configure", "Abrir mi Pokédex" if s.ready else "Configurar ahora",
                               lambda: self.go("home" if s.ready else "keys"), True, s.checking)
-        local = self.button("local", "Modo local", self.enter_local, disabled=s.checking or not s.engine_ready)
+        local = self.button("local", "Modo local", self.enter_local, disabled=not s.engine_ready)
         retry = (self.button("module", "Módulo", lambda: self.go("board"), disabled=s.checking)
                  if s.radio_state == "ready" else self.button("retry", "Revisar", self.recheck, disabled=s.checking))
         statuses.controls.append(ft.Row([
-            self.button("trainers", "Entrenadores", lambda: self.go("trainers"), disabled=s.checking or s.session_busy),
-            self.button("bank", "Banco", lambda: self.go("bank"), disabled=s.checking or s.session_busy),
+            self.button("trainers", "Entrenadores", lambda: self.go("trainers"), disabled=s.busy or s.session_busy),
+            self.button("bank", "Banco", lambda: self.go("bank"), disabled=s.busy or s.session_busy),
         ]))
         return self.layout(self.title("health", "Preparando tu Pokédex"), statuses, self.actions(primary, local, retry))
 

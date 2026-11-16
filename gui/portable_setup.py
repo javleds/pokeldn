@@ -16,6 +16,7 @@ from pokeldn.app.redact import Redactor
 
 PERCENT = re.compile(r"(\d{1,3}(?:\.\d+)?)\s?%")
 MAX_KEYS = 1024 * 1024
+CHECK_SLOW_SECONDS = 8
 SUPPORTED_RADIO_CHIPS = ("ESP32-C6", "ESP32-S3")
 
 
@@ -53,6 +54,8 @@ class Setup:
         self.session_busy = False
         self.active_team = None
         self.checking = False
+        self.check_detail = ""
+        self.check_slow = False
         self.phase = "idle"
         self.error = ""
         self.progress = None
@@ -89,11 +92,22 @@ class Setup:
         current.save()
         self.settings = current
 
+    def checking_stage(self, detail):
+        self.check_detail = detail
+        self.notify()
+
+    async def _slow_check_notice(self):
+        await asyncio.sleep(CHECK_SLOW_SECONDS)
+        self.check_slow = True
+        self.notify()
+
     async def check(self):
         if self.busy or self.checking or self.session_busy:
             return
         self.checking = True
-        self.notify()
+        self.check_slow = False
+        self.checking_stage("Comprobando claves y motor Pokémon…")
+        notice = asyncio.create_task(self._slow_check_notice())
         try:
             if self.demo:
                 self.engine_ready = True
@@ -115,12 +129,18 @@ class Setup:
                 self.radio_detail = "No se pudo comprobar el módulo. Revisa los detalles."
                 self.log(f"Comprobación fallida: {type(error).__name__}: {error}")
         finally:
+            notice.cancel()
+            await asyncio.gather(notice, return_exceptions=True)
+            self.check_slow = False
+            self.check_detail = ""
             self.checking = False
             self.initialized = True
             self.notify()
 
     async def check_radio(self):
         self.device, self.chip = "", ""
+        self.radio_state = "checking"
+        self.checking_stage("Buscando módulo USB…")
         present = await asyncio.to_thread(board.ports)
         port = choose_port(present, self.settings.radio_port)
         if port is None:
@@ -131,7 +151,7 @@ class Setup:
         self.device = port.device
         self.serial_number = getattr(port, "serial_number", None)
         self.radio_state = "checking"
-        self.notify()
+        self.checking_stage("Comprobando radio y firmware…")
         try:
             ident = await asyncio.to_thread(board.identify, self.device, False)
             self.chip = ident.chip
@@ -143,6 +163,7 @@ class Setup:
             # readiness from a successful USB enumeration alone.
             self.log(f"No respondió la radio: {type(error).__name__}: {error}")
             try:
+                self.checking_stage("La radio no respondió; identificando la placa…")
                 self.chip = await asyncio.to_thread(board.detect_chip, self.device)
                 self.radio_state = "flash"
                 self.radio_detail = "Firmware de radio requerido."

@@ -44,3 +44,7 @@ todos los registros, incluso ocultos por filtros. Exportar nunca sobreescribe
 un archivo existente. Banco conserva fuente inmutable; editar usa una copia
 y salir invalida validaciones pendientes. Listas y confirmaciones comprobadas
 en cliente Flet local a 800 × 480 con fixtures temporales (2026-11-16).
+
+Comprobación inicial (spec 032): indicador animado y etapa visibles; aviso lento
+tras ocho segundos. Radio sigue reservada hasta finalizar; Entrenadores/Banco
+pueden consultarse y exportarse durante el check. Mutaciones conservan sus guards.

@@ -263,3 +263,10 @@ necesita ZIP. Editar prepara copia y enviar original verifica integridad/
 legalidad sin aplicar transformaciones de oferta. Borrado confirmado no elimina
 Received ni journals. Sin importación histórica automática: algunos adaptadores
 escriben vistas previas antes de confirmar intercambio. Spec 029.
+
+## Comprobación inicial visible (2026-11-16)
+Setup ya ejecuta USB/PKHeX/esptool fuera del event loop. Se añade indicador
+animado, etapa y aviso tras ocho segundos, sin liberar acceso serie mientras
+sigue una operación. Listas locales y Modo local (motor listo) accesibles;
+instalación/revisión/intercambios siguen bloqueados. Se conservan reintentos y
+timeouts existentes; no se introduce cancelación insegura de threads. Spec 032.
