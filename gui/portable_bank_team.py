@@ -127,11 +127,12 @@ class BankTeam(Team):
                 flat = {key: draft[key] for key in ('species', 'level', 'nickname', 'shiny')}
                 flat['species'], flat['level'] = int(flat['species']), int(flat['level'])
                 flat.update(draft['options'])
-                moves = self.slots[0]['options'].get('moves', self.original_editable['moves'])
-                flat['moves'] = [int(value) if value not in (None, '') else self.original_editable['moves'][i]
-                                 for i, value in enumerate(moves)]
+                flat.pop('moves', None)
+                moves = self.requested_move_slots(self.slots[0]['options'].get('moves', self.original_editable['moves']))
                 changes = {key: value for key, value in flat.items()
                            if value != self.original_editable.get(key)}
+                if moves != self.original_editable['moves']:
+                    changes['move_slots'] = moves
             info = await asyncio.to_thread(self.service.edit_received, self.game, self.original, changes)
             if self.disposed or revision != self._revision[0]:
                 return

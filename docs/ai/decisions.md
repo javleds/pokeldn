@@ -319,3 +319,14 @@ menús abiertos legibles y filtrado funcional en Entrenadores y Banco.
 ## Etiquetas de juegos en bibliotecas (2026-11-16)
 Columnas/filtros usan nombres compactos en español (Rojo/Verde, Espada/Escudo,
 etc.). GAME_LABELS separado de GAME_FOLDERS; no renombrar exports/IDs. Spec 040.
+
+## Automático y Vacío en los tres editores (2026-11-16)
+Equipo, Modificar y Banco → Editar comparten la distinción: Automático solicita
+completar un movimiento compatible; Vacío conserva cero. Esto sustituye la
+decisión de spec 037 de restaurar el movimiento original en slots automáticos
+de Recibidos/Banco. Los ceros originales permanecen Vacío hasta cambiarlos.
+El contrato interno aditivo move_slots usa null/0/ID; moves y auto_move_slots
+legacy mantienen comportamiento. No compactar sobre un Vacío explícito ni
+reparar estadísticas ajenas para conseguir legalidad (incluidos AVs de Let's Go).
+La validación puede rechazar un conjunto vacío/ilegal. Fuente archivada e
+identidad se conservan; edición sobre copia. Spec 041.

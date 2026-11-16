@@ -77,3 +77,11 @@ explícitas; altura 160 con scroll. No heredar PANEL oscuro del helper desktop.
 Flet 1.0.5: Dropdown.bgcolor prevalece sobre MenuStyle.bgcolor. Los filtros
 portátiles deben fijar ambos claros; comprobar menú abierto, no solo campo.
 Verificación nativa de ambos menús y selección completada (spec 039).
+
+Actualización spec 041: en Equipo, Modificar y Banco → Editar, Automático ahora
+solicita completar el slot, también si originalmente estaba vacío. Vacío es una
+opción explícita distinta (0); nunca mostrar «0» como etiqueta de ese movimiento.
+Conservar manuales/posiciones, búsqueda y X hacia Automático. No llenar Vacío
+ni desplazar movimientos para ocultar ilegalidad. Selector compartido comprobado
+en cliente nativo con fixture temporal a 800 × 480: menú legible y selección
+Vacío ↔ Automático; servicio/controladores verificados por pruebas separadas.

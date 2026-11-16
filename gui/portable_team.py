@@ -328,6 +328,14 @@ class Team:
         return found
 
     @staticmethod
+    def requested_move_slots(values):
+        """None requests a move; zero explicitly leaves that slot empty."""
+        if not isinstance(values, list) or len(values) > 4:
+            raise ValueError('Usa hasta cuatro espacios de movimientos.')
+        slots = [None if value in (None, '') else int(value) for value in values]
+        return slots + [None] * (4 - len(slots))
+
+    @staticmethod
     def normalized(draft):
         draft = deepcopy(draft)
         options = draft.setdefault('options', {})
@@ -435,14 +443,10 @@ class Team:
                 pass
             if revision != self._revision[index]:
                 return
-            # Generation's Automatic slots request legal completion; an explicit
-            # moves list alone is intentionally exact in the shared service.
             options = deepcopy(draft.get('options', {}))
-            if isinstance(move_slots, list) and len(move_slots) <= 4:
-                slots = [0 if value in (None, '', 0, '0') else int(value) for value in move_slots]
-                slots += [0] * (4 - len(slots))
-                if any(slots) and 0 in slots:
-                    options['auto_move_slots'] = slots
+            if move_slots:
+                options.pop('moves', None)
+                options['move_slots'] = self.requested_move_slots(move_slots)
             info = await asyncio.to_thread(self.service.make, self.game, draft['species'], owner,
                                            int(draft['level']), bool(draft.get('shiny')), draft.get('nickname', ''),
                                            version, options)

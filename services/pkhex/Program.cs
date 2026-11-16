@@ -294,6 +294,7 @@ static partial class Program
             {
                 options.Remove("moves");
                 options.Remove("auto_move_slots");
+                options.Remove("move_slots");
             }
             var made = Make(game, baseline);
             var pk = Parse(game, Convert.FromBase64String((string)made["data"]!));
@@ -497,6 +498,16 @@ static partial class Program
                 throw new ArgumentException("Level must be between 0 and 100.");
             var shiny = (bool?)request["shiny"] ?? false;
             var nickname = (string?)request["nickname"] ?? "";
+            ushort?[]? selectedSlots = null;
+            if (request["options"] is JsonObject selected && selected.ContainsKey("move_slots"))
+            {
+                if (selected.ContainsKey("auto_move_slots"))
+                    throw new ArgumentException("Use move_slots or auto_move_slots, not both.");
+                selectedSlots = ReadMoveSlots(selected["move_slots"], game.Blank().MaxMoveID);
+                request = request.DeepClone().AsObject();
+                request["options"]!["moves"] = new JsonArray(selectedSlots.Where(m => m is > 0)
+                    .Select(m => (JsonNode?)(int)m!.Value).ToArray());
+            }
             ushort[]? autoSlots = null;
             if (request["options"] is JsonObject requested && requested.ContainsKey("auto_move_slots"))
             {
@@ -672,6 +683,8 @@ static partial class Program
                             (pk, la) = Learned(pk, la, encounter, wish, game.Versions[0]);
                         if (autoSlots is not null && wish.Unmet(pk, strings) is null)
                             (pk, la) = CompleteAutomaticMoves(pk, la, wish, autoSlots, game.Versions[0]);
+                        if (selectedSlots is not null)
+                            (pk, la) = CompleteSelectedMoves(pk, selectedSlots, game.Versions[0]);
                         var unmet = wish.Unmet(pk, strings);
                         if (Accepted(pk, la) && unmet is null)
                         {
@@ -686,7 +699,7 @@ static partial class Program
                     }
                 }
             }
-            if (allowIllegal && forge && autoSlots is null)
+            if (allowIllegal && forge && autoSlots is null && selectedSlots is null)
                 return Forged(game, request, blank, species, form, level, shiny, nickname, wish);
             var name = strings.specieslist[species];
             throw new InvalidOperationException(firstProblem is not null
@@ -790,17 +803,27 @@ static partial class Program
             return (pk, la);
         }
 
-        (PKM, LegalityAnalysis) CompleteAutomaticMoves(PKM pk, LegalityAnalysis la, Wish wish,
-                                                        ushort[] slots, GameVersion version)
+        ushort?[] ReadMoveSlots(JsonNode? node, int maximum)
         {
-            // The explicit moves already selected a compatible encounter. Add only moves that
-            // remain legal together on that record; do not regenerate or replace requested moves.
-            var chosen = slots.Where(m => m != 0).ToList();
-            if (chosen.Count == 4)
+            if (node is not JsonArray array || array.Count != 4)
+                throw new ArgumentException("Use exactly four move slots; null is Automatic and 0 is Empty.");
+            var slots = new ushort?[4];
+            for (var i = 0; i < slots.Length; i++)
             {
-                pk.SetMoves(slots);
-                return (pk, Refresh(pk, wish));
+                if (array[i] is null) continue;
+                if (array[i] is not JsonValue value || !value.TryGetValue<int>(out var id)
+                    || id < 0 || id > maximum)
+                    throw new ArgumentException("Unknown move slot value.");
+                slots[i] = (ushort)id;
             }
+            var named = slots.Where(m => m is > 0).ToArray();
+            if (named.Distinct().Count() != named.Length)
+                throw new ArgumentException("A Pokemon cannot know the same move twice.");
+            return slots;
+        }
+
+        ushort[] AutomaticMoveCandidates(PKM pk, LegalityAnalysis la, GameVersion version)
+        {
             var candidates = new List<ushort>();
             var top = new ushort[4];
             try
@@ -820,6 +843,76 @@ static partial class Program
             for (ushort move = 1; move < possible.Length && move <= pk.MaxMoveID; move++)
                 if (possible[move])
                     candidates.Add(move);
+            var dummied = MoveInfo.GetDummiedMovesHashSet(pk.Context);
+            var allowed = new List<ushort>();
+            foreach (var move in candidates.Distinct())
+                if (move != 0 && !MoveInfo.IsDummiedMove(dummied, move)) allowed.Add(move);
+            return allowed.ToArray();
+        }
+
+        (PKM, LegalityAnalysis) CompleteSelectedMoves(PKM pk, ushort?[] slots, GameVersion version)
+        {
+            // Move completion must not repair unrelated received fields or override Wish effort.
+            static LegalityAnalysis AnalyzeMoves(PKM candidate)
+            {
+                candidate.ResetPartyStats();
+                candidate.RefreshChecksum();
+                return new LegalityAnalysis(candidate);
+            }
+
+            var values = slots.Select(m => m ?? 0).ToArray();
+            var automatic = Enumerable.Range(0, 4).Where(i => slots[i] is null).ToArray();
+            var baseline = new LegalityAnalysis(pk);
+            var candidates = automatic.Length == 0 ? [] : AutomaticMoveCandidates(pk, baseline, version);
+            // Build complete sets first: Legends may reject sparse intermediate movesets.
+            var preferred = values.ToArray();
+            var available = new Queue<ushort>(candidates.Where(m => !values.Contains(m)));
+            foreach (var index in automatic)
+                if (available.TryDequeue(out var move)) preferred[index] = move;
+            var full = pk.Clone();
+            full.SetMoves(preferred);
+            Permit(full);
+            var fullAnalysis = AnalyzeMoves(full);
+            if (Accepted(full, fullAnalysis)) return (full, fullAnalysis);
+
+            // Never compact across an explicit Empty slot or overwrite a named move.
+            pk.SetMoves(values);
+            var analysis = AnalyzeMoves(pk);
+            var attempts = 0;
+            foreach (var index in automatic)
+            {
+                foreach (var move in candidates)
+                {
+                    if (values.Contains(move)) continue;
+                    if (++attempts > 64) return (pk, analysis);
+                    var trial = pk.Clone();
+                    var proposed = values.ToArray();
+                    proposed[index] = move;
+                    trial.SetMoves(proposed);
+                    Permit(trial);
+                    var trialAnalysis = AnalyzeMoves(trial);
+                    if (!Accepted(trial, trialAnalysis)) continue;
+                    values = proposed;
+                    pk = trial;
+                    analysis = trialAnalysis;
+                    break;
+                }
+            }
+            return (pk, analysis);
+        }
+
+        (PKM, LegalityAnalysis) CompleteAutomaticMoves(PKM pk, LegalityAnalysis la, Wish wish,
+                                                        ushort[] slots, GameVersion version)
+        {
+            // The explicit moves already selected a compatible encounter. Add only moves that
+            // remain legal together on that record; do not regenerate or replace requested moves.
+            var chosen = slots.Where(m => m != 0).ToList();
+            if (chosen.Count == 4)
+            {
+                pk.SetMoves(slots);
+                return (pk, Refresh(pk, wish));
+            }
+            var candidates = AutomaticMoveCandidates(pk, la, version);
             var dummied = MoveInfo.GetDummiedMovesHashSet(pk.Context);
             // Legends records can require a full moveset, so a one-move baseline is
             // not necessarily legal. Try the preferred complete set before adding singly.
@@ -1110,7 +1203,7 @@ static partial class Program
             var pk = Parse(game, data);
             if (!pk.ChecksumValid) throw new InvalidDataException("The Pokemon checksum is invalid.");
             string[] supported = ["species", "form", "nickname", "level", "shiny", "moves", "nature", "ability",
-                "gender", "held_item", "ball", "friendship", "ivs", "effort", "alpha", "gigantamax", "dynamax_level", "tera"];
+                "gender", "held_item", "ball", "friendship", "ivs", "effort", "alpha", "gigantamax", "dynamax_level", "tera", "move_slots"];
             foreach (var key in fields.Select(f => f.Key))
                 if (!supported.Contains(key))
                     throw new ArgumentException($"Unsupported received edit {key}.");
@@ -1122,6 +1215,10 @@ static partial class Program
                 return value;
             }
             int Read(string key, int min, int max) => Number(fields[key], key, min, max);
+            if (fields.ContainsKey("move_slots") && fields.ContainsKey("moves"))
+                throw new ArgumentException("Use move_slots or moves, not both.");
+            var selectedSlots = fields.ContainsKey("move_slots")
+                ? ReadMoveSlots(fields["move_slots"], pk.MaxMoveID) : null;
             // Parse an independent record. Never call Make, Retrain, or fresh-PID generation.
             var originalNature = pk.Nature;
             var originalGender = pk.Gender;
@@ -1220,6 +1317,11 @@ static partial class Program
             {
                 if (pk is not ITeraType tera) throw new ArgumentException("Tera types are unavailable in this game.");
                 TeraTypeUtil.SetTeraType(tera, (MoveType)Read("tera", 0, TeraTypeUtil.MaxType));
+            }
+            if (selectedSlots is not null)
+            {
+                (pk, _) = CompleteSelectedMoves(pk, selectedSlots, game.Versions[0]);
+                pk.HealPP();
             }
             pk.ResetPartyStats();
             pk.RefreshChecksum();

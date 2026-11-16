@@ -290,10 +290,11 @@ class ReceivedTeam(Team):
             flat = {k: draft[k] for k in ('species', 'level', 'nickname', 'shiny')}
             flat['species'], flat['level'] = int(flat['species']), int(flat['level'])
             flat.update(draft['options'])
-            moves = self.slots[0]['options'].get('moves', self.original_editable['moves'])
-            flat['moves'] = [int(v) if v not in (None, '') else self.original_editable['moves'][i]
-                             for i, v in enumerate(moves)]
+            flat.pop('moves', None)
+            moves = self.requested_move_slots(self.slots[0]['options'].get('moves', self.original_editable['moves']))
             changes = {k: v for k, v in flat.items() if v != self.original_editable.get(k)}
+            if moves != self.original_editable['moves']:
+                changes['move_slots'] = moves
             info = await asyncio.to_thread(self.service.edit_received, self.game, self.original, changes)
             if stamp != self.run_stamp or revision != self._revision[0] or not self.active:
                 return

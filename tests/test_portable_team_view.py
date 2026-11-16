@@ -234,12 +234,12 @@ def test_basic_controls_and_options_survive_slot_navigation():
     ui._draw_editor()
     controls = tuple(ui.editor_controls)
     species_options = controls[0].options
-    assert [o.key for o in controls[4].options] == ['', '145']
+    assert [o.key for o in controls[4].options] == ['', '0', '145']
     ui._select_slot(1)
     assert tuple(ui.editor_controls) == controls
     assert controls[0].options is species_options
     assert controls[0].value == '4' and controls[1].value == 'Flame'
-    assert [o.key for o in controls[4].options] == ['', '53']
+    assert [o.key for o in controls[4].options] == ['', '0', '53']
     controls[1].value = 'New'
     controls[1].on_change(SimpleNamespace(control=controls[1]))
     ui.model.edit.assert_called_with(1, 'nickname', 'New', option=False)
@@ -262,7 +262,7 @@ def test_selected_move_outside_filter_remains_visible():
     ui.model.slots[0] = dict(species=7, level='10', options={'moves': [53]})
     ui._draw_editor()
     assert ui.editor_controls[4].value == '53'
-    assert [o.text for o in ui.editor_controls[4].options] == ['Automático', 'Burbuja', 'Lanzallamas']
+    assert [o.text for o in ui.editor_controls[4].options] == ['Automático', 'Vacío', 'Burbuja', 'Lanzallamas']
 
 
 def test_statistics_editor_is_reused_when_returning_to_unchanged_slot():

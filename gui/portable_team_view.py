@@ -490,6 +490,8 @@ class TeamView:
         pairs = [(str(n["id"]), n["name"]) for n in values]
         if default:
             pairs.insert(0, ("", "Automático"))
+        if key == "moves":
+            pairs.insert(1, ("0", "Vacío"))
         if current not in (None, "") and str(current) not in {key for key, _ in pairs}:
             pairs.append((str(current), str(current)))
         def selected(e):
@@ -565,8 +567,9 @@ class TeamView:
         candidates = set(self.model.candidate_moves(self.selected))
         for i, control in enumerate(self.basic_controls[4:8]):
             current = str(moves[i]) if moves[i] is not None else ""
-            pairs = [("", "Automático"), *[(str(n["id"]), n["name"]) for n in self.move_names
-                       if n["id"] in candidates or str(n["id"]) == current]]
+            pairs = [("", "Automático"), ("0", "Vacío"),
+                     *[(str(n["id"]), n["name"]) for n in self.move_names
+                       if n["id"] != 0 and (n["id"] in candidates or str(n["id"]) == current)]]
             if current and current not in {key for key, _ in pairs}:
                 pairs.append((current, current))
             self._set_choices(control, pairs)
