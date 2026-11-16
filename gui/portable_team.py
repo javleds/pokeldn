@@ -121,6 +121,8 @@ class Team:
         self._result_revision = [-1] * 6
         self._hashes = [''] * 6
         self._storage_error = ''
+        self._bank_capture = None
+        self._bank_tasks = set()
         try:
             saved = self.store.load()
         except ValueError as exc:
@@ -478,7 +480,10 @@ class Team:
         return values
 
     def _run_env(self, settings):
-        return runner.base_env(settings, self.setup.device)
+        env = runner.base_env(settings, self.setup.device)
+        env.pop('POKELDN_EXACT_OFFER_GAME', None)
+        env.pop('POKELDN_EXACT_OFFER_SHA256', None)
+        return env
 
     @property
     def return_pending(self):
@@ -505,6 +510,7 @@ class Team:
         self.discovering, self.found_trainer, self.stop_requested = discover, None, False
         self.return_original = discover and return_original
         self.run_stamp = ''
+        self._bank_capture = None
         self.received_info, self.received_path, self.received_error = None, '', ''
         self.active_slots = [] if discover else [i for i, s in enumerate(self.slots) if s and s.get('species')]
         self.logs.clear()
@@ -561,6 +567,7 @@ class Team:
             run_settings.game_trainers[self.version] = {**raw, 'tid': tid, 'sid': sid}
             stamp = time.strftime('%Y%m%d-%H%M%S') + '-' + uuid.uuid4().hex[:8]
             self.run_stamp = stamp
+            self._begin_bank_capture(stamp, run_settings.received)
             args = command.build(tool, values, {}, run_settings, stamp)
             SESSION.mkdir(parents=True, exist_ok=True)
             Path(run_settings.received).expanduser().mkdir(parents=True, exist_ok=True)
@@ -594,10 +601,28 @@ class Team:
         if count is not None:
             expected = (2 if self.return_original else 1) if self.discovering else len(self.active_slots)
             self.completed = max(self.completed, min(count, expected))
+            self._capture_received()
         if self.discovering and not self.found_trainer and (found := console_trainer.read(line)) and found.get('game') == self.game:
             if found.get('source') in ('session', 'pokemon'):
                 self.found_trainer = found
         self.notify()
+
+    def _begin_bank_capture(self, stamp, folder):
+        from gui.portable_bank import PortableBank
+        from gui.portable_bank_capture import ReceiptCapture
+        library = getattr(self.setup, 'bank_library', None) or PortableBank(DATA / 'portable' / 'bank')
+        def report(message):
+            if self.run_stamp == stamp:
+                self.log(message)
+        if not hasattr(self.setup, "bank_persistence_tasks"):
+            self.setup.bank_persistence_tasks = set()
+        self._bank_capture = ReceiptCapture(
+            self.game, stamp, folder, library, self.service, self._bank_tasks, report,
+            persistence_tasks=self.setup.bank_persistence_tasks)
+
+    def _capture_received(self):
+        if self._bank_capture is not None:
+            self._bank_capture.schedule(self.completed)
 
     async def _learn_received_trainer(self, stamp, folder):
         if self.found_trainer or self.game not in console_trainer.GAME_VERSIONS:
@@ -649,6 +674,7 @@ class Team:
             await asyncio.sleep(.3)
 
     def _exited(self, code, *, trainer_checked=False):
+        self._capture_received()
         if (self.discovering and self.completed and not self.found_trainer
                 and self.game in console_trainer.GAME_VERSIONS and not trainer_checked):
             # Keep the radio/session locked until the final saved record is read.

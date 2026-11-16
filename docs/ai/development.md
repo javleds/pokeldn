@@ -153,3 +153,14 @@ y pruebas reportadas de FR/LG, Let's Go y Z-A. Temperatura observada ≤53 °C.
 Registrar por separado los campos RAM/CPU sistema y App del overlay.
 Errores Flutter/GTK de cierre permanecen como incidencia, no fallo de radio
 demostrado. Las referencias anteriores a Pi pendiente son historial de sus etapas.
+
+## Validación de facilities (2026-11-16)
+Suite ampliada: 350 pruebas aprobadas entre tests/test_portable*.py,
+tests/test_exact_bank_offer.py y tests/test_offer_options.py. La prueba BDSP de
+loopback se ejecutó aparte con permiso de socket local después de que el sandbox
+impidiera bind; 349 restantes pasaron en sandbox. UI nativa local: listas de
+Entrenadores/Banco, búsqueda y cancelación de confirmaciones a 800 × 480 útiles.
+Sin radio ni claves reales. Ver specs 028/029 para límites pendientes en Pi.
+
+Después de corregir carreras de salida del editor y cierre durante depósito,
+161 pruebas focalizadas volvieron a pasar con -W error.

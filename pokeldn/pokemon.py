@@ -1,6 +1,7 @@
 """Legal Pokemon from PKHeX.Core, through the services/pkhex service, saved in the form each launcher reads."""
 import base64
 import glob
+import hashlib
 import json
 import os
 import re
@@ -445,7 +446,48 @@ def entity_bytes(game, data):
     return data
 
 
+_exact_offer_verified = None
+
+
+def _exact_offer(game, data):
+    """Validate an explicitly selected bank entity without a service round-trip rewrite."""
+    global _exact_offer_verified
+    digest = os.environ.get("POKELDN_EXACT_OFFER_SHA256")
+    expected_game = os.environ.get("POKELDN_EXACT_OFFER_GAME")
+    if not digest and not expected_game:
+        return None
+    if expected_game != game or not digest or not re.fullmatch(r"[0-9a-f]{64}", digest):
+        raise BuilderError("The exact bank offer does not match the selected game.")
+    data = entity_bytes(game, data)
+    # SW/SH and PLA recheck their encrypted party record after prepare_file.
+    # Accept only native encryption/padding of the entity verified on first load.
+    def identity(record):
+        if game == "swsh":
+            from pokeldn.gen8 import load
+            return load(record)
+        if game == "pla":
+            from pokeldn.pla.pokemon import load
+            return load(record)
+        return record
+    key = (game, digest)
+    matches_hash = hashlib.sha256(data).hexdigest() == digest
+    if not matches_hash and (_exact_offer_verified is None or _exact_offer_verified[0] != key
+                             or identity(data) != _exact_offer_verified[1]):
+        raise BuilderError("The exact bank offer changed before transmission.")
+    checked = SERVICE.check_bytes(game, data)
+    if checked.get("legal") is not True:
+        raise BuilderError(str(checked.get("report") or "The bank offer is not legal."))
+    if matches_hash:
+        _exact_offer_verified = (key, identity(data))
+    return data
+
+
 def prepare(game, data, *, fresh=False, fields=None):
+    exact = _exact_offer(game, data)
+    if exact is not None:
+        if fresh or fields:
+            raise BuilderError("An exact bank offer cannot change identity or fields.")
+        return exact
     return SERVICE.prepare(game, data, fresh=fresh, fields=fields)
 
 
@@ -468,6 +510,14 @@ def prepare_offer(game, data, *, fresh=False, fields=None, transform=None):
     plugins' offer edits, PKHeX's check (`prepare`) and the game's offer form. A Mystery Gift made
     during the trade takes it too (pokeldn.receiver_gift)."""
     data = entity_bytes(game, data)
+    exact = _exact_offer(game, data)
+    if exact is not None:
+        if fresh or fields:
+            raise BuilderError("An exact bank offer cannot change identity or fields.")
+        if game == "za":
+            from pokeldn.gen9 import load
+            exact = load(exact)  # Native offer framing requires a party-sized entity.
+        return offer_bytes(game, exact)
     if transform is not None:
         data = entity_bytes(game, transform(data))
     return offer_bytes(game, prepare(game, plugin_edits(game, data), fresh=fresh, fields=fields))

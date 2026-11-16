@@ -61,6 +61,7 @@ class PortableView:
         self.local = False
         self.team_view = None
         self.trainers_view = None
+        self.bank_view = None
         self.selected_game = None
         self.game_list = None
         self.gallery_navigation = asyncio.Lock()
@@ -122,6 +123,11 @@ class PortableView:
             self.setup.listeners.discard(self.setup_listener)
         if self.team_view is not None:
             self.team_view.dispose()
+        # A completed trade may still be writing its final archive entry.
+        # Wait for bytes, not optional PKHeX metadata enrichment.
+        pending = getattr(self.setup, "bank_persistence_tasks", set())
+        if pending:
+            await asyncio.gather(*tuple(pending), return_exceptions=True)
         await self.page.window.destroy()
 
     def button(self, key, text, callback, primary=False, disabled=False, icon=None):
@@ -328,6 +334,7 @@ class PortableView:
                  if s.radio_state == "ready" else self.button("retry", "Revisar", self.recheck, disabled=s.checking))
         statuses.controls.append(ft.Row([
             self.button("trainers", "Entrenadores", lambda: self.go("trainers"), disabled=s.checking or s.session_busy),
+            self.button("bank", "Banco", lambda: self.go("bank"), disabled=s.checking or s.session_busy),
         ]))
         return self.layout(self.title("health", "Preparando tu Pokédex"), statuses, self.actions(primary, local, retry))
 
@@ -336,6 +343,37 @@ class PortableView:
         self.header_text.value = "CONFIGURACIÓN · ENTRENADORES"
         self.trainers_view = TrainersView(self)
         return self.trainers_view.control
+
+    def view_bank(self):
+        from gui.portable_bank_view import BankView
+        self.header_text.value = "CONFIGURACIÓN · BANCO"
+        self.bank_view = BankView(self)
+        return self.bank_view.control
+
+    async def open_bank_record(self, game_key, data, *, edit):
+        from gui.portable_bank_team import BankTeam
+        from gui.portable_bank_view import BankEditorView
+        from gui.portable_team import shared_team
+        from gui.popups import Dialogs
+        from pokeldn.app.popups import Manager
+        if self.setup.session_busy or self.setup.busy or self.setup.checking:
+            raise ValueError("Espera a que termine la sesión o comprobación.")
+        controller = BankTeam(game_key, self.setup, data, edit=edit,
+                              source_team=shared_team(game_key, self.setup))
+        await controller.load_original()
+        if (self.setup.session_busy or self.setup.busy or self.setup.checking
+                or self.closing or self.screen != 'bank'):
+            controller.dispose()
+            return
+        if self.team_view:
+            self.team_view.dispose()
+        async def call_ui(fn):
+            fn()
+        controller.popups = Manager(Dialogs(self.page), call=lambda fn: self.page.run_task(call_ui, fn))
+        self.selected_game = next(game for game in PORTABLE_GAMES if game.key == game_key)
+        self.team_view = BankEditorView(self, controller)
+        self.go('team')
+        self.page.run_task(self.team_view.load)
 
     def enter_local(self):
         self.local = True

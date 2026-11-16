@@ -179,6 +179,7 @@ class ReceivedTeam(Team):
         count = received.trades_done(line)
         if count is not None:
             self.completed = max(self.completed, min(count, 2))
+            self._capture_received()
             self._journal()
         if line.startswith('[portable-return] error'):
             self.error = line.split('error', 1)[1].strip()
@@ -203,6 +204,8 @@ class ReceivedTeam(Team):
                     if request.get('game') != self.game or request.get('sha256') != digest:
                         raise ValueError('El original no coincide con la sesión.')
                     self.original, self.original_hash = data, digest
+                    if self._bank_capture is not None:
+                        await self._bank_capture.original(data)
                     self.received_path = str(directory / 'original.bin')
                     self._journal()
                     info = await asyncio.to_thread(self.service.edit_received, self.game, data, {})
@@ -359,6 +362,7 @@ class ReceivedTeam(Team):
         self.notify()
 
     def _exited(self, code):
+        self._capture_received()
         self.active = self.busy = False
         self.phase = 'stopped' if self.stop_requested else 'done' if code == 0 and self.completed == 2 else 'error'
         if self.return_pending:

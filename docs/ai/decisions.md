@@ -255,3 +255,11 @@ por juego, con eliminación confirmada y JSON array individual/bulk. Se preserva
 IDs originales de 16 bits, género, idioma y versión conocida; nombres exportados
 seguros y carpeta por familia de juego. Reutiliza TeamStore y selectores.
 No toca el repositorio económico. Spec 028.
+
+## Facility Banco (2026-11-16)
+Ajustes del fork Pi/Flet archiva originales de intercambios confirmados, separados
+de borradores. JSON array con Base64 y SHA256 conserva los bytes completos; no
+necesita ZIP. Editar prepara copia y enviar original verifica integridad/
+legalidad sin aplicar transformaciones de oferta. Borrado confirmado no elimina
+Received ni journals. Sin importación histórica automática: algunos adaptadores
+escriben vistas previas antes de confirmar intercambio. Spec 029.

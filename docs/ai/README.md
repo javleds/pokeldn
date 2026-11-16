@@ -55,3 +55,10 @@ FR/LG, Let's Go y Z-A: ~1.1 GB de RAM reportados (campo no identificado),
 temperatura observada ≤53 °C. No es validación de todos los roles/modalidades ni
 de DSI. Evidencia y límites: [spec 026](../specs/026-pi-first-hardware-validation.md).
 Errores del cliente Flutter/GTK al cerrar se investigan por separado.
+
+## Bibliotecas portátiles (2026-11-16)
+Ajustes incorpora [Entrenadores](../specs/028-portable-trainers.md) y
+[Banco](../specs/029-portable-bank.md). Perfiles exportables/importables como
+JSON array y originales recibidos exportables sin pérdida, con edición de copia.
+Lista y confirmaciones comprobadas en cliente Flet local a 800 × 480; nuevos
+flujos de archivos y envío deben verificarse en Pi.

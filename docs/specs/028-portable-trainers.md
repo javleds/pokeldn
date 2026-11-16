@@ -94,3 +94,8 @@ Juego/OT/ID/SID/Idioma, eliminar con confirmación y exportar por fila.
 Importar JSON y Exportar todos siempre usan arrays. Exportación individual
 crea subcarpeta de familia de juego en destino elegido; no sobreescribe archivos
 existentes. Bulk se guarda como entrenadores.json. Teclado nativo en formularios.
+
+Validación visual local 2026-11-16: cliente Flet nativo a 800 × 480 útiles,
+columnas completas, búsqueda RED, navegación desde/hacia Ajustes y cancelar
+eliminación individual. Fixtures temporales. Selector de archivos Linux e
+importación entre dos dispositivos pendientes de comprobación física.

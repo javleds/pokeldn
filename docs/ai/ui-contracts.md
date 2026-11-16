@@ -37,3 +37,10 @@ Registrar decisión, spec, componentes afectados, pruebas ejecutadas y límites.
 Modales de entrenador/conexión: columnas ajustadas (`tight=True`), acciones siempre visibles a 800 × 480 incluso con error LGPE. Mantener datos agrupados y Guardar/Listo primario; Cancelar no persiste. No expandir la columna verticalmente ni trasladar este estilo automáticamente al comparador aprobado (spec 014).
 Papel en conexión: selector segmentado, una selección obligatoria, solo opciones admitidas por el juego. Sin Unirse disponible se muestra únicamente Anfitrión seleccionado. Cambiar segmento no guarda hasta confirmar (spec 015).
 Alturas de conexión (Flet 1.0.5): segmentado con densidad STANDARD para que el fondo seleccionado llene sus 40 px. Código denso, texto 16, padding vertical 12 y contador oculto: 48 px totales producen borde visible de 40 px en el cliente actual. No igualar únicamente height sin revisar los bordes en captura; Flutter reserva espacio de contador. Borde gris y foco cian, misma esquina de 8 px.
+
+Facilities de Ajustes (specs 028/029): Entrenadores y Banco mantienen búsqueda
+y filtro por juego, acciones por fila y confirmación de borrado. Bulk abarca
+todos los registros, incluso ocultos por filtros. Exportar nunca sobreescribe
+un archivo existente. Banco conserva fuente inmutable; editar usa una copia
+y salir invalida validaciones pendientes. Listas y confirmaciones comprobadas
+en cliente Flet local a 800 × 480 con fixtures temporales (2026-11-16).
