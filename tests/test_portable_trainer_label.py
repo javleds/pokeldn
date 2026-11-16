@@ -33,22 +33,19 @@ def test_shared_header_displays_complete_identity_and_preserves_search(factory):
     assert option.text == trainer_label(ui.model.game, profile)
     assert 'opaque' not in option.text
     assert ui.trainer.tooltip == option.text
-    assert ui.trainer_heading.value == trainer_details(ui.model.game, profile)
     ui.trainer.on_focus(SimpleNamespace(control=ui.trainer))
     ui.trainer.text = 'María'
     ui._refresh_trainer(False)
     assert ui.trainer.value is None
     assert ui.trainer.text == 'María'
     assert ui.trainer.data == 'opaque-hash'
-    assert ui.trainer_heading.value == trainer_details(ui.model.game, profile)
     ui._refresh_trainer(True)
-    assert ui.trainer.disabled and ui.find.disabled and ui.trainer_info.disabled
+    assert ui.trainer.disabled and ui.find.disabled
 
 
 def test_base_option_remains_clear_target_with_visible_identity():
     ui = view()
     assert ui.trainer.options[0].text == 'Base de pokeLDN'
     assert ui.trainer.options[0].key == 'base'
-    assert ui.trainer_heading.value == trainer_details(ui.model.game, ui.model.trainer)
     ui.trainer.selected_suffix.on_click(None)
     ui.model.set_trainer.assert_called_once_with('base')

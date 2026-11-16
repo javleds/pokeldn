@@ -54,3 +54,7 @@ Conexión (spec 033): código literal visible debajo del rol en el mismo botón,
 
 Actualización spec 034: botón de conexión sin label redundante, conservando
 105 × 40, contenido rol/código y alineación inferior de la cabecera.
+
+Entrenador (spec 035): sin título de IDs ni botón de datos; selector + Encontrar
+en fila de 40 px alineada con Conexión, dentro de cabecera de 60 px. Conservar
+consulta temporal, identidad en opciones/tooltip y X hacia Base de pokeLDN.

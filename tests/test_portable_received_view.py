@@ -58,7 +58,7 @@ def test_received_trainer_header_is_locked_through_editing():
     ui = view()
     assert ui.trainer.options[0].key == 'base'
     received(ui)
-    assert ui.trainer.disabled and ui.trainer_info.disabled and ui.find.disabled
+    assert ui.trainer.disabled and ui.find.disabled
     ui._trainer_selected(SimpleNamespace(control=SimpleNamespace(value='base')))
     ui.model.set_trainer.assert_not_called()
 

@@ -280,3 +280,9 @@ solo rol sin campo de código. Shared TeamView cubre todas las modalidades. Spec
 Por solicitud del usuario, retirar label Conexión: rol y código identifican el
 botón. Conservar 105 × 40 y alineación inferior con controles de cabecera;
 tooltip explica configuración. Actualiza spec 033 mediante spec 034.
+
+## Entrenador sin duplicados (2026-11-16)
+Usuario autoriza retirar cabecera de IDs y botón Datos del entrenador. Mantener
+selector con identidad completa, tooltip y Encontrar mi entrenador. Base de
+pokeLDN conserva nombre/opción X y detalles en tooltip. No eliminar género ni
+idioma persistidos aunque desaparezca el modal. Spec 035 actualiza spec 030.

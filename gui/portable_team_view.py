@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import flet as ft
 
 from gui import theme
-from gui.portable_trainer_labels import trainer_details, trainer_label
+from gui.portable_trainer_labels import trainer_label
 from gui.views.sprites import Sprite
 from gui.views.widgets import on_ui
 from pokeldn import console_trainer
@@ -62,7 +62,7 @@ class TeamView:
         self.trainer_model = controller
         self._init_trainer()
         self.clear_all = self.icon(ft.Icons.DELETE_OUTLINE, "Vaciar equipo", lambda e: self._confirm_clear(None), RED)
-        for button in (self.trainer_info, self.find, self.clear_all):
+        for button in (self.find, self.clear_all):
             button.height = 40
         self.clear_one = self.icon(ft.Icons.BACKSPACE_OUTLINED, "Vaciar esta caja", lambda e: self._confirm_clear(self.selected), RED)
         self.start = self.icon(ft.Icons.SWAP_HORIZ, "Iniciar intercambio", self._start, GREEN)
@@ -112,17 +112,14 @@ class TeamView:
         self.trainer = self.dropdown([], None, self._trainer_selected, clear_value='base')
         self.trainer.expand = True
         self.trainer.tooltip = 'Entrenador de la oferta · El recibido conserva su propietario original'
-        self.trainer_info = self.icon(ft.Icons.BADGE_OUTLINED, 'Datos del entrenador', self._trainer_info)
         self.find = self.icon(ft.Icons.PERSON_SEARCH, 'Encontrar mi entrenador', self._find_trainer, GREEN)
 
     def _trade_header(self):
         self.connection.tooltip = 'Configurar conexión local'
         self.connection.height = self.mode_menu.height = 40
         self.connection.width = 105
-        trainer = ft.Row([self.trainer, self.trainer_info, self.find], spacing=2)
-        trainer_section = labeled('Entrenador', trainer, expand=True)
-        self.trainer_heading = trainer_section.controls[0]
-        self.trainer_heading.size = 11
+        trainer_section = ft.Row([self.trainer, self.find], spacing=2, expand=True, height=40,
+                                 vertical_alignment=ft.CrossAxisAlignment.CENTER)
         return ft.Row([self.back, labeled('Modalidad', self.mode_menu, width=150),
                        trainer_section,
                        self.connection], spacing=8, height=60,
@@ -134,10 +131,8 @@ class TeamView:
                    for key, item in m.profiles.items() if key != 'base']]
         profile = m.profiles.get(m.selected_trainer) or getattr(m, 'trainer', None)
         if profile is not None:
-            self.trainer_heading.value = trainer_details(self.model.game, profile)
             self.trainer.tooltip = trainer_label(self.model.game, profile)
         else:
-            self.trainer_heading.value = 'Entrenador'
             self.trainer.tooltip = 'Entrenador de la oferta · El recibido conserva su propietario original'
         if choices != self.last_profiles:
             self._set_choices(self.trainer, choices)
@@ -145,8 +140,8 @@ class TeamView:
         if not self.trainer.portable_searching:
             self.trainer.value = m.selected_trainer
         self.trainer.data = m.selected_trainer
-        self.trainer.disabled = self.trainer_info.disabled = self.find.disabled = locked
-        self.trainer_info.opacity = self.find.opacity = 0.4 if locked else 1
+        self.trainer.disabled = self.find.disabled = locked
+        self.find.opacity = 0.4 if locked else 1
 
     def icon(self, icon, tooltip, callback, color=INK):
         return ft.IconButton(icon, tooltip=tooltip, on_click=callback, icon_size=21, width=36, height=40,
@@ -306,7 +301,7 @@ class TeamView:
         ], spacing=0, tight=True, alignment=ft.MainAxisAlignment.CENTER,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER)
         self.connection.tooltip = f'{role} · {code} · Configurar conexión' if has_code else f'{role} · Configurar conexión'
-        for control in [self.back, self.connection, self.trainer, self.trainer_info, self.find,
+        for control in [self.back, self.connection, self.trainer, self.find,
                         self.clear_all, self.clear_one, *self.slot_buttons, *self.tab_buttons,
                         *self.editor_controls]:
             control.disabled = m.busy
@@ -793,30 +788,6 @@ class TeamView:
         if not self.model.busy and not getattr(self.model, 'active', False):
             self.trainer_model.set_trainer(e.control.value)
             self.page.run_task(self.trainer_model.validate_all)
-
-    def _trainer_info(self, e):
-        trainer = self.trainer_model.trainer
-        tid, sid = console_trainer.shown(self.model.game, int(trainer["tid"]), int(trainer["sid"]))
-        language = {1: "Japonés", 2: "Inglés", 3: "Francés", 4: "Italiano", 5: "Alemán",
-                    7: "Español", 8: "Coreano", 9: "Chino simplificado", 10: "Chino tradicional", 11: "Español latinoamericano"}.get(
-                        trainer.get("language"), str(trainer.get("language", "")))
-        identity = ft.Container(ft.Column([
-            text(trainer.get("ot", "") or "Sin nombre", 24, weight=ft.FontWeight.W_700,
-                 selectable=True),
-            text(f'{"Masculino" if trainer.get("gender") == 0 else "Femenino"} · {language}', 14),
-        ], tight=True, spacing=5), padding=16, bgcolor="#FFFFFF", border_radius=12,
-            border=ft.Border.all(1, "#DCE1DA"))
-        identifiers = ft.Row([
-            ft.Container(labeled(label, text(str(value), 22, weight=ft.FontWeight.W_700,
-                                            selectable=True)),
-                         padding=14, bgcolor="#E4EAE5", border_radius=10, expand=True)
-            for label, value in (("ID visible", tid), ("ID secreto visible", sid))
-        ], spacing=10)
-        self._dialog("Datos del entrenador", ft.Column([
-            identity, identifiers, text("Perfil seleccionado para este juego", 12),
-        ], tight=True, spacing=12, horizontal_alignment=ft.CrossAxisAlignment.STRETCH), [ft.TextButton("Listo", on_click=self._dismiss,
-            style=ft.ButtonStyle(bgcolor=GREEN, color="#FFFFFF", padding=ft.Padding(22, 10, 22, 10)))],
-            width=460, icon=ft.Icons.BADGE_OUTLINED)
 
     def _find_trainer(self, e):
         return_original = ft.Switch(label="Devolver Pokémon original", value=True)
