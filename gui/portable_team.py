@@ -511,7 +511,7 @@ class Team:
             run_folder.mkdir(parents=True, mode=0o700)
             files = []
             if discover:
-                info = await asyncio.to_thread(command.random_offer, self.game, self.trainer, VERSIONS.get(self.version, ''))
+                info = await asyncio.to_thread(command.courtesy_offer, self.game, self.trainer, VERSIONS.get(self.version, ''))
                 candidates = [(None, info)]
             else:
                 candidates = [(i, self.results[i]) for i in self.active_slots]

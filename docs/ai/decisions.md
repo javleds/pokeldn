@@ -202,3 +202,13 @@ N16R8 del usuario. Se conserva USB nativo, instalación explícita y verificaci�
 del chip/firmware. El bloqueo anterior era exclusivo del asistente; el núcleo
 ya soporta S3. Spec 022. Intercambio físico y selector de archivos Flet en Pi
 pendientes; no atribuir el cierre Flutter a la radio sin reproducción.
+
+## Oferta de cortesía regional en todos los juegos (2026-11-15)
+
+Tras bloqueos de devolución reportados con Flygon y Sharpedo en Rojo Fuego,
+la identificación y las modalidades de recibido portátiles usarán Magikarp
+generado legalmente para el juego/versión. Se aplica a las siete familias.
+No habrá fallback a especies aleatorias nacionales. La oferta manual de Equipo
+permanece intacta. No se alteran originales ni se recuperan devoluciones de forma
+automática. Spec 023; pruebas físicas de ida/vuelta pendientes. Legalidad PKHeX
+no demuestra requisitos de progreso de la partida.

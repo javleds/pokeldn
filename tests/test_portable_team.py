@@ -343,7 +343,7 @@ def test_discovery_saves_profile_only_after_confirmed_trade(launch, monkeypatch,
     import gui.portable_team as module
     original_slots = [dict(s) if s else None for s in launch.slots]
     base = dict(launch.trainer)
-    monkeypatch.setattr(module.command, 'random_offer', lambda *args: launch.results[0])
+    monkeypatch.setattr(module.command, 'courtesy_offer', lambda *args: launch.results[0])
     async def scenario():
         await launch.start(discover=True)
         process = launch.process
@@ -426,7 +426,7 @@ def test_late_move_filter_cannot_replace_new_configuration(team, monkeypatch):
 def test_discovery_return_requires_second_confirmation_and_keeps_first_trainer(launch, monkeypatch, returned):
     import json
     import gui.portable_team as module
-    monkeypatch.setattr(module.command, 'random_offer', lambda *args: launch.results[0])
+    monkeypatch.setattr(module.command, 'courtesy_offer', lambda *args: launch.results[0])
     async def scenario():
         await launch.start(discover=True, return_original=True)
         process = launch.process
@@ -476,7 +476,7 @@ def test_received_preview_reads_original_without_modifying_it(launch, tmp_path):
 
 def test_missing_native_original_stops_instead_of_reporting_return_success(launch, monkeypatch):
     import gui.portable_team as module
-    monkeypatch.setattr(module.command, 'random_offer', lambda *args: launch.results[0])
+    monkeypatch.setattr(module.command, 'courtesy_offer', lambda *args: launch.results[0])
     async def scenario():
         await launch.start(discover=True, return_original=True)
         launch._line("[trade-back] the console's Pokemon was not kept: the next trade offers the queue")

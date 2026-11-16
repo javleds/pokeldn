@@ -336,6 +336,17 @@ def prepare(tool: Tool, values: dict, game: str = "", trainer: dict | None = Non
     return filled
 
 
+def courtesy_offer(game: str, trainer: dict, version: str = "") -> dict:
+    """Build a regional-dex courtesy offer for identification and return sessions."""
+    from pokeldn import pokemon
+    # Magikarp is regional in every portable game and never evolves by trade.
+    # A legal National Dex species can still be impossible for the player to return.
+    info = pokemon.SERVICE.make(game, 129, trainer, version=version)
+    if info.get("legal") is not True or info.get("species_id") != 129 or info.get("form_id") != 0:
+        raise ValueError("No se pudo generar un Magikarp legal para la oferta de cortesía.")
+    return {"file": info["file"], "summary": pokemon.summary(info), "legal": True}
+
+
 def random_offer(game: str, trainer: dict, version: str = "", tries: int = 20,
                  rng=random) -> dict:
     """A random species of `game` that PKHeX builds legally for `trainer`, as the builder holds it."""
