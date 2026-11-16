@@ -311,3 +311,7 @@ a 800 × 480. Los previews futuros deben usar el tema/arranque real. Spec 038.
 Los filtros de Entrenadores/Banco heredaban MenuStyle oscuro del helper desktop.
 Sobrescribir menú PAPER y texto INK con límites 280 × 160 solo en estas vistas.
 Equipo ya declara menú claro. Spec 039.
+
+Corrección de spec 039: MenuStyle no bastaba; el cliente Flet sobrescribe su
+fondo con Dropdown.bgcolor. Fijados ambos en filtros. Computer Use confirmó
+menús abiertos legibles y filtrado funcional en Entrenadores y Banco.

@@ -24,6 +24,8 @@ class BankView:
         self.game = theme.dropdown([('', 'Todos los juegos'), *[(g, GAME_FOLDERS[g]) for g in GAMES]],
                                    '', on_select=self.refresh)
         self.game.width = 190
+        # Flet 1.0.5 applies Dropdown.bgcolor over MenuStyle.bgcolor.
+        self.game.bgcolor = "#F3F1EA"
         self.game.color = "#243139"
         self.game.menu_height, self.game.menu_width = 160, 280
         self.game.menu_style = ft.MenuStyle(bgcolor="#F3F1EA", max_size=ft.Size(280, 160),

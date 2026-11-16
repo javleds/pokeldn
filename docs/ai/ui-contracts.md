@@ -73,3 +73,7 @@ normal, títulos, etiquetas y acciones sobre superficies claras con cliente real
 
 Filtros de bibliotecas (spec 039): menú flotante claro y opciones oscuras
 explícitas; altura 160 con scroll. No heredar PANEL oscuro del helper desktop.
+
+Flet 1.0.5: Dropdown.bgcolor prevalece sobre MenuStyle.bgcolor. Los filtros
+portátiles deben fijar ambos claros; comprobar menú abierto, no solo campo.
+Verificación nativa de ambos menús y selección completada (spec 039).

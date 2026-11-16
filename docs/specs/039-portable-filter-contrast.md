@@ -52,3 +52,16 @@ fijan fondo/color de opciones y límites, preservando callback y valores.
 Computer Use seleccionó una instancia anterior; un cliente aislado temporal
 quedó en blanco. No se pudo certificar el renderizado corregido en este turno.
 No se cerró la sesión del usuario. Verificación visual pendiente.
+
+## Corrección tras reproducción real
+Computer Use confirmó menú oscuro aun con MenuStyle claro. El cliente Flet
+1.0.5 copia Dropdown.bgcolor sobre MenuStyle.backgroundColor; el helper desktop
+conservaba FIELD oscuro. Fijar también Dropdown.bgcolor=PAPER en ambos filtros.
+Fuente: https://github.com/flet-dev/flet/blob/v1.0.5/packages/flet/lib/src/controls/dropdown.dart
+La verificación previa de propiedades Python no detectaba esta precedencia.
+
+## Validación corregida
+Computer Use con arranque real y fixtures temporales: ambos menús abiertos
+legibles, fondo claro y opciones oscuras a 800 × 480. Selección rojo_verde en
+Entrenadores y lets_go en Banco filtró correctamente. Sustituye el pendiente
+visual anterior; defecto persistente resuelto fijando bgcolor además de MenuStyle.
