@@ -146,3 +146,10 @@ Si al relanzar el cliente queda en «Working…» con `RuntimeError: Session clo
 
 ### Empaquetado Portable (spec 020)
 `./scripts/build_portable.sh --app` publica PKHeX y empaqueta la GUI con identidad portátil. Comandos y dependencias en [guía portátil](../portable-build.md#crear-la-app-con-su-ícono); evidencia y límites en [spec 020](../specs/020-portable-app-package.md). Validación focalizada: `.venv/bin/python -m pytest tests/test_portable_package.py -q -W error`. No confundir firma ad hoc/verificación local con distribución notarizada o validación en Pi.
+
+## Pi física: primer reporte
+Véase [spec 026](../specs/026-pi-first-hardware-validation.md): compilación ARM64
+y pruebas reportadas de FR/LG, Let's Go y Z-A. Temperatura observada ≤53 °C.
+Registrar por separado los campos RAM/CPU sistema y App del overlay.
+Errores Flutter/GTK de cierre permanecen como incidencia, no fallo de radio
+demostrado. Las referencias anteriores a Pi pendiente son historial de sus etapas.

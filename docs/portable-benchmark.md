@@ -90,3 +90,11 @@ Criterios propuestos, pendientes de acordar: cambio de caja <100 ms p95, respues
 - [FRLG](specs/references/benchmarks/mac-frlg-2026-11-13.json)
 - [SwSh](specs/references/benchmarks/mac-swsh-2026-11-13.json)
 - [UI nativa en reposo](specs/references/benchmarks/mac-ui-idle-2026-11-13.json)
+
+## Primeras observaciones físicas Pi 5 (2026-11-16)
+[Spec 026](specs/026-pi-first-hardware-validation.md): usuario reporta pruebas
+funcionales FR/LG, Let's Go y Z-A, temperatura máxima observada 53 °C y RAM
+aproximada 1.1 GB. Falta distinguir RAM sistema de App RSS y registrar duraciones
+y porcentajes. Las 4 CPU lógicas son capacidad, no carga máxima.
+Pi 5 8 GB, cooler oficial, HDMI, S3 N16R8 y fuente temporal; DSI pendiente.
+No establece RAM mínima ni consumo/autonomía del dispositivo completo.

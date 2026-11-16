@@ -48,3 +48,10 @@ Compilación habitual tras preparar el entorno: `./scripts/build_portable.sh` ([
 Arranque habitual: `./scripts/run_portable.sh` ([spec 018](../specs/018-portable-run-command.md)); no necesita exports y conserva los datos locales existentes.
 
 [Benchmark y opciones de hardware económico](../portable-benchmark.md): primeras mediciones Mac, script aislado y criterios para Pi. Son resultados piloto, no certificación de placa/RAM mínima ni aprobación de reescritura de UI.
+
+## Validación física inicial (2026-11-16)
+El usuario completó pruebas en Pi 5 con S3, cooler oficial y monitor HDMI en
+FR/LG, Let's Go y Z-A: ~1.1 GB de RAM reportados (campo no identificado),
+temperatura observada ≤53 °C. No es validación de todos los roles/modalidades ni
+de DSI. Evidencia y límites: [spec 026](../specs/026-pi-first-hardware-validation.md).
+Errores del cliente Flutter/GTK al cerrar se investigan por separado.
