@@ -403,3 +403,69 @@ def test_connection_single_role_remains_selected():
     role = dialog.content.content.controls[0].content.controls[0].controls[1]
     assert [segment.value for segment in role.segments] == ['host']
     assert role.selected == ['host'] and not role.allow_empty_selection
+
+
+def discovery_result(ui, *, return_original=True, completed=2, phase='done', busy=False, error=''):
+    m = ui.model
+    m.discovering = True
+    m.return_original = return_original
+    m.completed = completed
+    m.phase, m.busy, m.error = phase, busy, error
+    m.return_pending = return_original and completed == 1
+    m.received_info = None
+    m.received_error = ''
+    m.found_trainer = dict(ot='RED', tid=12345, sid=54321)
+    m.game = 'frlg'
+
+
+def test_identification_success_returns_to_team_with_trainer_identifiers():
+    for return_original, completed in ((False, 1), (True, 2)):
+        ui = view()
+        discovery_result(ui, return_original=return_original, completed=completed)
+        # Revalidation can still run after the trainer has been saved.
+        ui.model.states[0] = 'validating'
+        ui.refresh(update=False)
+        assert ui.editor.visible and not ui.session.visible
+        assert all(button.visible for button in ui.slot_buttons)
+        assert not ui.return_to_team.visible
+        assert 'Entrenador identificado: RED' in ui.status.value
+        assert 'ID 12345' in ui.status.value and 'SID 54321' in ui.status.value
+        # The view must not disrupt the controller's final validation/return journal.
+        assert ui.model.discovering
+
+
+def test_identification_waits_for_return_and_process_exit():
+    for completed, busy, phase in ((1, True, 'running'), (2, True, 'running'), (1, False, 'error')):
+        ui = view()
+        discovery_result(ui, completed=completed, busy=busy, phase=phase)
+        ui.refresh(update=False)
+        assert ui.session.visible and not ui.editor.visible
+        assert ui.return_to_team in ui.slot_row.controls
+        assert ui.return_to_team.visible
+        assert ui.return_to_team.disabled == busy
+        if busy:
+            ui._return_to_team(None)
+            assert not ui.discovery_dismissed
+
+
+def test_failed_or_cancelled_identification_does_not_auto_return():
+    for phase, error in (('error', 'No se guardó el entrenador'), ('stopped', '')):
+        ui = view()
+        discovery_result(ui, phase=phase, error=error)
+        ui.refresh(update=False)
+        assert ui.session.visible
+        assert not ui.editor.visible
+        assert '✓ Entrenador identificado' not in ui.status.value
+
+
+def test_manual_return_preserves_pending_warning_and_new_run_shows_discovery():
+    ui = view()
+    discovery_result(ui, completed=1, phase='stopped')
+    ui.refresh(update=False)
+    ui.return_to_team.on_click(None)
+    assert ui.editor.visible and not ui.session.visible
+    assert 'Devolución pendiente' in ui.status.value
+    assert ui.model.discovering
+    discovery_result(ui, completed=0, busy=True, phase='preparing')
+    ui.refresh(update=False)
+    assert ui.session.visible and not ui.discovery_dismissed

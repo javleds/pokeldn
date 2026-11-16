@@ -212,3 +212,13 @@ No habrá fallback a especies aleatorias nacionales. La oferta manual de Equipo
 permanece intacta. No se alteran originales ni se recuperan devoluciones de forma
 automática. Spec 023; pruebas físicas de ida/vuelta pendientes. Legalidad PKHeX
 no demuestra requisitos de progreso de la partida.
+
+## Identificación: regreso a Equipo (2026-11-15)
+
+Tras identificación exitosa y cierre confirmado, volver automáticamente al editor
+de Equipo mostrando nombre, ID y SID según formato del juego. Si se solicitó
+devolución, esperar ambos intercambios. Error/cancelación mantiene el diagnóstico;
+Volver a Equipo queda en fila fija y deshabilitado durante sesión. Conservar
+advertencia de devolución pendiente al volver manualmente. Spec 024.
+Por instrucción del usuario, cambios y validaciones locales; él publica y actualiza
+la Pi. No editar por SSH ni desplegar automáticamente.

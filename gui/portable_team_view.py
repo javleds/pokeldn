@@ -48,6 +48,7 @@ class TeamView:
         self.logs_dialog = None
         self.logs_list = None
         self.disposed = False
+        self.discovery_dismissed = False
         self.loaded = False
         self.last_profiles = None
         self.basic_content = None
@@ -69,6 +70,7 @@ class TeamView:
         self.loader = ft.ProgressRing(width=25, height=25, stroke_width=3, color=CYAN, visible=False)
         self.cancel.visible = False
         self.logs.visible = False
+        self.return_to_team = ft.TextButton("Volver a Equipo", on_click=self._return_to_team, visible=False)
         self.slot_row = self._slot_row()
         self.tab_buttons = []
         for key, title in (("basic", "Básico"), ("stats", "EV / IV"), ("advanced", "Avanzado")):
@@ -275,7 +277,7 @@ class TeamView:
             self.slot_buttons.append(button)
             controls.append(button)
         self.session_spacer = ft.Container(expand=True, visible=False)
-        return ft.Row([self.session_spacer, *controls, self.start, self.loader, self.cancel, self.logs, self.clear_all], spacing=5, height=58)
+        return ft.Row([self.session_spacer, *controls, self.return_to_team, self.start, self.loader, self.cancel, self.logs, self.clear_all], spacing=5, height=58)
 
     def refresh(self, update=True):
         m = self.model
@@ -302,7 +304,16 @@ class TeamView:
         self.logs.visible = bool(m.logs) or m.busy
         self.clear_all.visible = not m.busy
         self.clear_one.visible = not m.busy
-        discovery = bool(getattr(m, 'discovering', False))
+        if m.busy:
+            self.discovery_dismissed = False
+        identified = (getattr(m, 'found_trainer', None)
+                      if getattr(m, 'discovering', False) else None)
+        identification_done = bool(
+            identified and not m.busy and not m.error and m.phase == 'done'
+            and m.completed == (2 if m.return_original else 1))
+        discovery = bool(getattr(m, 'discovering', False)) and not identification_done and not self.discovery_dismissed
+        self.return_to_team.visible = discovery
+        self.return_to_team.disabled = m.busy
         self.mode_menu.disabled = m.busy
         draft = m.slots[self.selected]
         first_empty = next((i for i, slot in enumerate(m.slots) if not (slot or {}).get('species')), 5)
@@ -395,12 +406,16 @@ class TeamView:
                 portrait.portable_wanted = wanted
                 portrait.show(*wanted[:2], form=wanted[2], update=False)
         error = m.error or self.loading_error or ('' if discovery else m.errors[self.selected])
-        if discovery and getattr(m, 'return_pending', False) and not m.busy:
+        if getattr(m, 'return_pending', False) and not m.busy:
             error = 'Devolución pendiente: el original no tiene confirmación de regreso. Revisa Received y tu consola.'
         if error:
             self.status.value, self.status.color = error.splitlines()[0], RED
         elif m.busy:
             self.status.value, self.status.color = "Sesión activa · Configuración bloqueada", MUTED
+        elif identification_done:
+            tid, sid = console_trainer.shown(m.game, int(identified['tid']), int(identified['sid']))
+            self.status.value = f"✓ Entrenador identificado: {identified['ot']} · ID {tid} · SID {sid}"
+            self.status.color = GREEN
         elif m.states[self.selected] == "validating":
             self.status.value, self.status.color = "Validando cambios…", MUTED
         elif m.phase == "done":
@@ -830,13 +845,14 @@ class TeamView:
                     ft.Container(card, bgcolor='#E4E7E5', padding=12, border_radius=12)]
         if m.found_trainer:
             controls.append(text(f"Entrenador identificado: {m.found_trainer.get('ot', '')}", 14))
-        if not m.busy:
-            def close(e):
-                m.discovering = False
-                self._draw_editor()
-                self.refresh()
-            controls.append(ft.TextButton('Volver a Equipo', on_click=close))
         self.session.controls = controls
+
+    def _return_to_team(self, e):
+        if self.model.busy:
+            return
+        self.discovery_dismissed = True
+        self._draw_editor()
+        self.refresh()
 
     def _connection(self, e):
         m = self.model
