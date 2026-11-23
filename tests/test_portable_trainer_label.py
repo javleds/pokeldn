@@ -33,11 +33,11 @@ def test_shared_header_displays_complete_identity_and_preserves_search(factory):
     assert option.text == trainer_label(ui.model.game, profile)
     assert 'opaque' not in option.text
     assert ui.trainer.tooltip == option.text
-    ui.trainer.on_focus(SimpleNamespace(control=ui.trainer))
-    ui.trainer.text = 'María'
+    ui.trainer.open_button.on_click(None)
+    ui.trainer.picker.query.value = 'María'
     ui._refresh_trainer(False)
-    assert ui.trainer.value is None
-    assert ui.trainer.text == 'María'
+    assert ui.trainer.value == 'opaque-hash'
+    assert ui.trainer.picker.query.value == 'María'
     assert ui.trainer.data == 'opaque-hash'
     ui._refresh_trainer(True)
     assert ui.trainer.disabled and ui.find.disabled

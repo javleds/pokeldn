@@ -160,29 +160,6 @@ class TeamView:
             e.control.portable_searching = False
             callback(e)
 
-        def restore_selection(e):
-            e.control.portable_searching = False
-            # Search text is a query, never a new free-form option.
-            e.control.value = e.control.data
-            e.control.text = next((option.text for option in e.control.options
-                                   if option.key == e.control.data), "")
-            if e.control.parent is not None:
-                e.control.update()
-
-        def begin_search(e):
-            if e.control.disabled or self.model.busy or e.control.portable_searching:
-                return
-            # Flet 1.0.5 ignores backend-only text changes in its controller.
-            # Clear the widget value too; data/model retain the committed option.
-            e.control.portable_searching = True
-            e.control.value = None
-            e.control.text = ""
-            if e.control.parent is not None:
-                e.control.update()
-
-        control = theme.dropdown([(str(key), name) for key, name in choices],
-                                 selected_value, on_select=selected,
-                                 editable=search, enable_filter=search, enable_search=True, menu_height=220)
         def clear(e):
             if control.disabled or self.model.busy:
                 return
@@ -195,14 +172,14 @@ class TeamView:
                 control.update()
 
         if search:
-            control.on_focus = begin_search
-            # Subscribe so Flutter synchronizes the query back to Python. Otherwise
-            # restoring the same label can be omitted as an unchanged property.
-            control.on_text_change = lambda e: None
-            control.selected_suffix = ft.IconButton(ft.Icons.CLOSE, tooltip="Limpiar selección",
-                icon_size=15, width=24, height=28, padding=0, icon_color=MUTED,
-                visual_density=ft.VisualDensity.COMPACT, on_click=clear)
-        control.on_blur = restore_selection
+            from gui.portable_touch import TouchSelector
+            control = TouchSelector(self.page,
+                [ft.DropdownOption(key=str(key), text=name) for key, name in choices],
+                selected_value, selected, clear, lambda: not self.model.busy)
+            return control
+
+        control = theme.dropdown([(str(key), name) for key, name in choices],
+                                 selected_value, on_select=selected, menu_height=220)
         # The desktop helper removes menu_height for initially short lists. These
         # lists are populated later, so always bound the portable overlay explicitly.
         control.menu_height = 160
@@ -228,22 +205,8 @@ class TeamView:
         control.focused_border_color = CYAN
         control.menu_style = ft.MenuStyle(bgcolor=PAPER, max_size=ft.Size(280, 160),
                                          min_size=ft.Size(0, 0))
-        if search:
-            from gui.portable_touch import TouchOptions
-
-            def open_touch(e):
-                if not control.disabled:
-                    TouchOptions(self.page, control, selected).open()
-
-            touch_button = ft.IconButton(ft.Icons.ARROW_DROP_DOWN,
-                tooltip="Explorar opciones con desplazamiento táctil", on_click=open_touch,
-                icon_size=20, width=28, height=28, padding=0, icon_color=INK)
-            control.trailing_icon = ft.Row([control.selected_suffix, touch_button],
-                                          tight=True, spacing=0, height=28)
-            control.selected_trailing_icon = control.trailing_icon
-        else:
-            control.trailing_icon = ft.Icon(ft.Icons.ARROW_DROP_DOWN, size=16)
-            control.selected_trailing_icon = ft.Icon(ft.Icons.ARROW_DROP_UP, size=16)
+        control.trailing_icon = ft.Icon(ft.Icons.ARROW_DROP_DOWN, size=16)
+        control.selected_trailing_icon = ft.Icon(ft.Icons.ARROW_DROP_UP, size=16)
         return control
 
     def _notified(self):

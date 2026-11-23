@@ -110,3 +110,31 @@ def test_escape_cancels_query_and_restores_shell_keyboard_handler():
     assert ui.page.on_keyboard_event is original
     original.assert_not_called()
     ui.selected.assert_not_called()
+
+
+def test_selector_has_one_open_route_and_ignores_duplicate_or_disabled_open():
+    from gui.portable_touch import TouchSelector
+    page = SimpleNamespace(show_dialog=Mock(), pop_dialog=Mock())
+    selector = TouchSelector(page, [ft.DropdownOption(key='a', text='Abra')],
+                             'a', Mock(), Mock(), lambda: True)
+    selector.open_button.on_click(None)
+    first = selector.picker
+    selector.open_button.on_click(None)
+    assert selector.picker is first
+    page.show_dialog.assert_called_once_with(first.dialog)
+    asyncio.run(first.cancel())
+    selector.disabled = True
+    selector.open_button.on_click(None)
+    assert selector.picker is first
+    assert page.show_dialog.call_count == 1
+
+
+def test_selector_refreshes_caption_when_options_arrive_or_value_changes():
+    from gui.portable_touch import TouchSelector
+    selector = TouchSelector(SimpleNamespace(), [], 'a', Mock(), Mock(), lambda: True)
+    selector.options = [ft.DropdownOption(key='a', text='Abra'), ft.DropdownOption(key='b', text='Bulbasaur')]
+    selector.before_update()
+    assert selector.caption.value == 'Abra'
+    selector.value = 'b'
+    selector.before_update()
+    assert selector.caption.value == 'Bulbasaur'

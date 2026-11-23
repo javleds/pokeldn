@@ -122,32 +122,28 @@ def test_illegal_result_preserves_draft_and_disables_exchange():
     ui.model.clear.assert_not_called()
 
 
-def test_base_trainer_is_valid_and_unmatched_search_restores_selection():
+def test_base_trainer_is_valid_and_unmatched_search_preserves_selection():
     ui = view()
-    dropdown = ui.trainer
-    assert dropdown.value == 'base'
-    assert dropdown.editable and dropdown.enable_filter and dropdown.enable_search
-    assert next(o.text for o in dropdown.options if o.key == 'base') == 'Base de pokeLDN'
-    dropdown.text = 'No existe'
-    dropdown.value = None
-    dropdown.on_select(SimpleNamespace(control=dropdown))
+    control = ui.trainer
+    control.open_button.on_click(None)
+    picker = control.picker
+    picker.query.value = 'No existe'
+    picker.filter(update=False)
+    assert picker.rows.controls[0].value == 'Sin coincidencias'
+    asyncio.run(picker.cancel())
+    assert control.value == 'base'
     ui.model.set_trainer.assert_not_called()
-    dropdown.on_blur(SimpleNamespace(control=dropdown))
-    assert dropdown.value == 'base'
-    assert dropdown.text == 'Base de pokeLDN'
 
-
-def test_search_selection_survives_blur():
+def test_dedicated_selection_commits_once_and_updates_caption(monkeypatch):
     ui = view()
     callback = Mock()
-    dropdown = ui.dropdown([('1', 'Uno'), ('2', 'Dos')], '1', callback)
-    dropdown.value = '2'
-    dropdown.on_select(SimpleNamespace(control=dropdown))
-    dropdown.text = 'Otra búsqueda'
-    dropdown.on_blur(SimpleNamespace(control=dropdown))
-    assert dropdown.value == '2' and dropdown.text == 'Dos'
+    control = ui.dropdown([('1', 'Uno'), ('2', 'Dos')], '1', callback)
+    monkeypatch.setattr(control, 'update', control.before_update)
+    control.open_button.on_click(None)
+    asyncio.run(control.picker.choose('2'))
+    assert control.value == control.data == '2'
+    assert control.caption.value == 'Dos'
     callback.assert_called_once()
-
 
 def test_clear_selector_resets_value_and_cannot_mutate_busy_session():
     ui = view()
@@ -197,26 +193,20 @@ def test_commit_uses_validation_as_single_metadata_and_error_owner():
     assert not ui.loading_error
 
 
-def test_focus_clears_query_without_changing_committed_option():
+def test_reopening_selector_starts_empty_query_without_changing_value():
     ui = view()
     callback = Mock()
-    dropdown = ui.dropdown([('', 'Automático'), ('1', 'Burbuja')], '', callback)
-    dropdown.text = 'Automático'
-    dropdown.on_focus(SimpleNamespace(control=dropdown))
-    assert dropdown.text == ''
-    assert dropdown.value is None
-    assert dropdown.data == ''
-    dropdown.text = 'bur'
-    dropdown.on_blur(SimpleNamespace(control=dropdown))
-    assert dropdown.text == 'Automático'
+    control = ui.dropdown([('', 'Automático'), ('1', 'Burbuja')], '', callback)
+    control.open_button.on_click(None)
+    first = control.picker
+    first.query.value = 'bur'
+    assert control.value == control.data == ''
+    asyncio.run(first.cancel())
+    control.open_button.on_click(None)
+    assert control.picker is not first
+    assert not control.picker.query.value
+    assert control.value == ''
     callback.assert_not_called()
-    dropdown.on_focus(SimpleNamespace(control=dropdown))
-    dropdown.value = '1'
-    dropdown.on_select(SimpleNamespace(control=dropdown))
-    dropdown.on_blur(SimpleNamespace(control=dropdown))
-    assert dropdown.value == '1' and dropdown.text == 'Burbuja'
-    callback.assert_called_once()
-
 
 def test_non_search_selector_does_not_clear_on_focus():
     ui = view()
@@ -281,16 +271,15 @@ def test_statistics_editor_is_reused_when_returning_to_unchanged_slot():
     ui.model.load_options.assert_not_called()
 
 
-def test_dynamically_populated_selector_keeps_bounded_menu():
+def test_dynamically_populated_selector_uses_bounded_dedicated_list():
     ui = view()
-    dropdown = ui.dropdown([('', 'Automático')], '', Mock())
-    ui._set_choices(dropdown, [(str(i), f'Move {i}') for i in range(400)])
-    assert dropdown.menu_height == 160
-    assert dropdown.menu_width == 280
-    assert dropdown.width == 280
-    assert dropdown.menu_style.max_size.width == 280
-    assert dropdown.menu_style.max_size.height == 160
-
+    control = ui.dropdown([('', 'Automático')], '', Mock())
+    ui._set_choices(control, [(str(i), f'Move {i}') for i in range(400)])
+    control.open_button.on_click(None)
+    assert len(control.picker.rows.controls) == 400
+    assert control.height == 40 and control.width == 280
+    assert control.picker.dialog.content.height == 248
+    assert control.picker.dialog.content.width == 400
 
 def test_find_trainer_offers_optional_original_return():
     ui = view()
@@ -361,17 +350,13 @@ def test_max_checkboxes_follow_each_box_and_lock_during_trade():
 
 def test_trainer_refresh_does_not_replace_active_query():
     ui = view()
-    ui.trainer.on_focus(SimpleNamespace(control=ui.trainer))
-    ui.trainer.text = 'search'
+    ui.trainer.open_button.on_click(None)
+    ui.trainer.picker.query.value = 'search'
     ui.refresh(update=False)
-    assert ui.trainer.value is None
-    assert ui.trainer.data == 'base'
-    assert ui.trainer.text == 'search'
-    ui.trainer.on_blur(SimpleNamespace(control=ui.trainer))
-    assert ui.trainer.value == 'base'
-    assert ui.trainer.text == 'Base de pokeLDN'
+    assert ui.trainer.value == ui.trainer.data == 'base'
+    assert ui.trainer.picker.query.value == 'search'
+    asyncio.run(ui.trainer.picker.cancel())
     ui.model.set_trainer.assert_not_called()
-
 
 def test_connection_role_toggle_only_saves_when_confirmed():
     ui = view()

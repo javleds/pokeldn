@@ -38,6 +38,47 @@ def drag_scroll(content, scroll, *, horizontal=False):
     )
 
 
+class TouchSelector(ft.Container):
+    """A committed value whose entire button opens the dedicated search dialog."""
+
+    def __init__(self, page, options, value, selected, clear, can_open):
+        self.host_page = page
+        self.options, self.value, self.text = options, value, ""
+        self.on_select = selected
+        self.can_open = can_open
+        self.picker = None
+        self.portable_searching = False
+        self.caption = ft.Text(size=14, color="#243139", weight=ft.FontWeight.W_400, max_lines=1,
+                               overflow=ft.TextOverflow.ELLIPSIS, expand=True)
+        self.open_button = ft.TextButton(
+            ft.Row([self.caption, ft.Icon(ft.Icons.ARROW_DROP_DOWN, size=20, color="#243139")],
+                   spacing=4), expand=True, height=40, on_click=self.open_picker,
+            style=ft.ButtonStyle(padding=ft.Padding(8, 0, 4, 0),
+                shape=ft.RoundedRectangleBorder(radius=8),
+                side={ft.ControlState.FOCUSED: ft.BorderSide(2, "#00C8D8")}))
+        self.selected_suffix = ft.IconButton(ft.Icons.CLOSE, tooltip="Limpiar selección",
+            icon_size=15, width=28, height=28, padding=0, icon_color="#5C6870",
+            visual_density=ft.VisualDensity.COMPACT, on_click=clear)
+        super().__init__(
+            content=ft.Row([self.open_button, self.selected_suffix], spacing=0),
+            width=280, height=40, bgcolor="#FFFEF8", border_radius=8,
+            border=ft.Border.all(1, "#B3BABB"), data=value,
+        )
+        self.before_update()
+
+    def before_update(self):
+        self.opacity = 0.45 if self.disabled else 1
+        self.text = next((o.text or o.key for o in self.options if o.key == self.value), "")
+        self.caption.value = self.text or "Seleccionar…"
+        self.open_button.tooltip = self.text or "Seleccionar opción"
+
+    def open_picker(self, e=None):
+        if self.disabled or not self.can_open() or (self.picker and not self.picker.closed):
+            return
+        self.picker = TouchOptions(self.host_page, self, self.on_select)
+        self.picker.open()
+
+
 class TouchOptions:
     """A temporary query; only an enabled option commits to the original selector."""
 

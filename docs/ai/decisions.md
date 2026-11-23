@@ -393,3 +393,12 @@ Botón nativo inmediatamente a izquierda de Ajustes, sin nueva fila, disponible 
 las vistas portátiles incluso cuando Ajustes esté oculto. Comparte acción con F11,
 icono/tooltip de entrar/salir y navegación de cabecera. Web lo oculta. Se conserva
 el arranque Linux en fullscreen; no se persiste preferencia. Spec 047.
+
+## Selectores dedicados completos (2026-11-22)
+El usuario señala que los selectores siguen usando el desplegable nativo. Spec 048
+sustituye el acceso adicional de 046: toda la superficie de nombre/flecha de los
+selectores buscables abre TouchOptions, mediante TouchSelector. X sigue separado
+y conserva Base/Automático/sin selección. La consulta vive únicamente en el diálogo,
+se inicia vacía y no altera la selección confirmada al cancelar o refrescar.
+El foco no abre automáticamente el diálogo. Selectores no buscables y escritorio
+conservan sus controles. Pruebas y límites de validación en spec 048.

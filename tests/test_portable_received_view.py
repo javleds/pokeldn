@@ -181,11 +181,11 @@ def test_nature_search_keeps_config_until_explicit_selection():
     ui = view('nature')
     ui._set_choices(ui.nature, [('0', 'Fuerte'), ('1', 'Huraña')])
     ui._set_selection(ui.nature, 0)
-    ui.nature.on_focus(SimpleNamespace(control=ui.nature))
-    assert ui.nature.value is None and ui.nature.data == '0'
-    ui.nature.text = 'hur'
+    ui.nature.open_button.on_click(None)
+    assert ui.nature.value == ui.nature.data == '0'
+    ui.nature.picker.query.value = 'hur'
     ui.model.configure_param.assert_not_called()
-    ui.nature.on_blur(SimpleNamespace(control=ui.nature))
+    asyncio.run(ui.nature.picker.cancel())
     assert ui.nature.value == '0' and ui.nature.text == 'Fuerte'
     ui.nature.value = '1'
     ui.nature.on_select(SimpleNamespace(control=ui.nature))

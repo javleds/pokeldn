@@ -7,9 +7,9 @@ Leer antes de modificar las vistas. Nuevas peticiones son incrementales: no anul
 | Pantalla | 800 × 480, marco rojo, ajustes arriba; Básico sin scroll. No añadir altura al introducir atajos |
 | Arranque | Checks válidos → juegos; requisitos pendientes → diagnóstico. Esperar comprobación compartida entre pestañas. Ajustes manuales permanecen abiertos |
 | Galería | Una fila horizontal, avatares y nombres alineados, fallback Poké Ball |
-| Selectores | Entrenador/especie/movimientos/opciones buscables: al recibir foco, consulta vacía; selección confirmada intacta hasta elegir o X; al salir restaurar selección. No validar por escribir consulta |
-| Búsqueda activa | Refresh no repone el texto mientras se busca. Clic dentro de una consulta activa no debe borrarla de nuevo. Selección por teclado y tacto sigue disponible |
-| Desplegable | Menú acotado 280 × 160; campo visible para escribir; cierre sin elegir. Ancho preferido finito, no infinito |
+| Selectores | Entrenador/especie/movimientos/opciones buscables: nombre/flecha abre TouchOptions mediante TouchSelector; consulta vacía al abrir; selección confirmada intacta hasta elegir o X. Foco no abre automáticamente (spec 048) |
+| Búsqueda activa | Consulta temporal en el diálogo; refresh no la reemplaza. Cancelar/Escape conserva selección. Mantener navegación por teclado y tacto |
+| Desplegable | Buscables: diálogo con contenido 400 × 248, búsqueda y lista arrastrable. No buscables: menú acotado 280 × 160. Anchos finitos; cierre sin elegir |
 | X | Entrenador → Base de pokeLDN; movimiento → Automático; especie → sin selección |
 | Cajas | Reutilizar controles; opciones/cache por configuración; cambiar caja no genera innecesariamente. Estado y primer error corresponden a caja activa |
 | Equipo secuencial | Básico visible sin Crear Pokémon. Solo especie hace que una caja cuente como oferta y habilite la siguiente. Ocupadas + primera vacía accesibles; borrar caja o especie compacta a la izquierda, preservando datos y resultados actuales. Una respuesta asíncrona antigua nunca se aplica a otro índice |
@@ -24,11 +24,17 @@ Leer antes de modificar las vistas. Nuevas peticiones son incrementales: no anul
 | Validador | Tarjeta verde/roja/neutra; informe completo en modal y logs, sin scroll principal. Informe persiste después de devolver |
 | Nuevo intercambio | Acción explícita de configuración tras terminar; conserva aviso y archivos de devoluciones pendientes. No reenvío automático en otra sesión |
 
-## Particularidad de Flet 1.0.5
+## Particularidad histórica de Flet 1.0.5
 
-El cliente `Dropdown` solo sincroniza su TextEditingController al cambiar `value`, no al asignar únicamente `text`. Durante búsqueda, `value=None` es estado temporal del widget; `data` y el modelo conservan la elección confirmada. No eliminar esta separación para «simplificar» el componente. `portable_searching` evita que refresh de entrenador restaure prematuramente el valor. Fuente consultada: [implementación oficial 1.0.5](https://github.com/flet-dev/flet/blob/v1.0.5/packages/flet/lib/src/controls/dropdown.dart).
+El Dropdown nativo sincronizaba su TextEditingController solo al cambiar value.
+La spec 048 retira ese campo de los selectores buscables portátiles: TouchSelector
+muestra la selección confirmada y TouchOptions mantiene la consulta separada.
+No reintroducir una segunda ruta nativa al tocar el nombre. Conservar options,
+value y data para los callbacks y caches compartidos.
 
-Pruebas: `test_focus_clears_query_without_changing_committed_option`, `test_trainer_refresh_does_not_replace_active_query`, `test_dynamically_populated_selector_keeps_bounded_menu`. Complementar con inspección visual: la primera versión del test de foco pasaba aunque el campo visible no se vaciaba.
+Pruebas en test_portable_team_view.py y test_portable_touch.py cubren consulta,
+confirmación, cancelación, opciones dinámicas y refresco del componente dedicado.
+Complementar con cliente Flet real; propiedades Python no certifican su interacción.
 
 ## Registro mínimo por cambio
 
@@ -116,7 +122,7 @@ escritorio mediante fullscreen. F11 alterna en las vistas nativas, incluida Equi
 web conserva el control del navegador. Escape no sale de fullscreen: mantiene su
 función actual. Handoff y menú de accesos conservan su bloqueo de atajos.
 
-Swipe (spec 046): galería arrastrable horizontalmente, barra AUTO. Flecha de los
+Swipe (spec 046; acceso a selectores sustituido por 048): galería arrastrable horizontalmente, barra AUTO. Flecha de los
 selectores buscables abre lista táctil adicional con búsqueda temporal y scroll
 vertical. Arrastrar no elige, tocar opción habilitada confirma una sola vez;
 Cancelar/Escape conserva elección. Campo nativo, consulta al foco y X conservados.
@@ -128,3 +134,8 @@ Pantalla completa táctil (spec 047): botón a izquierda de Ajustes; permanece v
 en cliente nativo incluso fuera de la galería. F11 y toque comparten acción; icono
 y tooltip reflejan estado. ↑ sigue enfocando Ajustes, ← llega a fullscreen y ↓
 vuelve a juegos. Sin filas nuevas ni cambios de datos al alternar.
+
+Selectores dedicados (spec 048): toda la superficie nombre/flecha abre la misma
+lista táctil; no queda Dropdown nativo debajo. X independiente; campo de 40 px,
+selección visible y borde de foco. Búsqueda únicamente dentro del diálogo.
+Evidencia visual y límites de teclado/Pi registrados en spec 048.
