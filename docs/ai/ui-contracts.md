@@ -110,3 +110,8 @@ Menú claro con dos acciones; deshabilitar durante actividad y escritura.
 Conservar navegación de cabecera; el menú recibe sus propias flechas/Escape.
 CUA a 800 × 480 con y sin Update: clic/Enter abre y Escape cierra sin salir
 de galería. Resultado modal con ruta, datos y advertencias. Linux real pendiente.
+
+Pantalla completa (spec 045): arranque portátil Linux nativo sin barras del
+escritorio mediante fullscreen. F11 alterna en las vistas nativas, incluida Equipo;
+web conserva el control del navegador. Escape no sale de fullscreen: mantiene su
+función actual. Handoff y menú de accesos conservan su bloqueo de atajos.

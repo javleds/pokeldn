@@ -233,6 +233,10 @@ class PortableView:
     async def key(self, e):
         if self.updater.handoff or self.shortcuts.menu_open:
             return
+        if e.key == "F11" and not self.page.web:
+            self.page.window.full_screen = not self.page.window.full_screen
+            self.page.update()
+            return
         if e.key == "?":
             self.resources.toggle()
             return
@@ -699,6 +703,9 @@ async def main(page: ft.Page):
     page.window.width, page.window.height = 800, 480
     page.window.min_width, page.window.min_height = 640, 400
     page.window.prevent_close = True
+    if not page.web and sys.platform == "linux":
+        # Reserve the full display for the portable canvas, without desktop chrome.
+        page.window.full_screen = True
     # The macOS title bar consumes 32 logical pixels inside Flet's reported
     # window height. Reserve it in addition to the portable 480-pixel canvas.
     if not page.web and sys.platform == 'darwin':

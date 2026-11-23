@@ -368,3 +368,10 @@ a izquierda de Update/Ajustes. Archivos reales por usuario, root estable y DATA
 actual explícitos, sin build al abrir. Resolver escritorio por XDG, sin sudo.
 Respaldar entradas distintas antes de reemplazar. Si cambia la carpeta de datos,
 registrar de nuevo: la ruta capturada tiene prioridad sobre la preferencia global.
+
+## Pantalla completa portátil (2026-11-22)
+El usuario reporta pérdida de espacio por panel del escritorio y título en la
+pantalla DSI instalada, especialmente en Equipo. Se autoriza corregirlo en main:
+Linux nativo inicia a pantalla completa; F11 alterna con ventana en el cliente
+nativo, conservando Cerrar y Escape. Sin escalado ni cambios de formularios o modo
+escritorio. Validación física del compositor/DSI pendiente. Spec 045.

@@ -389,3 +389,17 @@ Una entrada anterior distinta se respalda con sufijo .bak; repetir sin cambios
 no crea copias adicionales. El diálogo muestra ruta y advertencias.
 El escritorio puede exigir **Permitir ejecutar/lanzar** en su menú contextual.
 No requiere sudo. Disponible sólo en modo portátil Linux desde fuente.
+
+## Pantalla completa en Raspberry Pi
+
+El modo portátil nativo en Linux abre a pantalla completa para aprovechar la
+pantalla DSI de 800 × 480 sin reservar espacio al panel ni a la barra de título.
+**F11** alterna entre pantalla completa y ventana; el botón **Cerrar** de la propia
+app conserva las protecciones de sesión. Escape mantiene su función de navegación.
+Al reiniciar vuelve a pantalla completa. No requiere cambiar el panel del sistema.
+Mac y Windows conservan su tamaño inicial; también admiten F11 en modo portátil.
+La previsualización web usa el control de pantalla completa del navegador.
+
+Validar en Pi con escalado adecuado: Equipo/Básico completo, campos buscables,
+menús y modales, y cierre accesible. El comportamiento del compositor Linux y la
+superficie útil DSI aún requieren comprobación física (spec 045).

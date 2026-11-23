@@ -281,3 +281,55 @@ def test_start_schedules_focus_only_once_when_checks_open_gallery(view, monkeypa
     assert view.screen == 'home'
     scheduled.assert_called_once_with(focus)
     focus.assert_not_awaited()
+
+
+@pytest.mark.parametrize('platform,web,fullscreen,height', [
+    ('linux', False, True, 480),
+    ('linux', True, False, 480),
+    ('darwin', False, False, 512),
+    ('win32', False, False, 480),
+])
+def test_portable_startup_uses_full_display_only_on_native_linux(
+        monkeypatch, platform, web, fullscreen, height):
+    import flet as ft
+    from gui import portable
+
+    monkeypatch.setattr(portable.sys, 'platform', platform)
+    monkeypatch.setenv('POKELDN_PORTABLE_DEMO', '1')
+    monkeypatch.delenv('POKELDN_UPDATE_JOB', raising=False)
+    monkeypatch.setattr(PortableView, 'start', AsyncMock())
+    page = SimpleNamespace(web=web, fonts={}, window=ft.Window(),
+                           add=lambda control: None, run_task=lambda *a: None)
+    asyncio.run(portable.main(page))
+    assert page.window.full_screen is fullscreen
+    assert page.window.height == height
+    assert page.window.prevent_close
+
+
+@pytest.mark.parametrize('screen', ['home', 'health', 'team', 'trainers', 'bank'])
+def test_f11_toggles_native_window_without_leaving_view(view, screen):
+    view.page.web = False
+    view.page.window = SimpleNamespace(full_screen=True)
+    view.screen = screen
+    asyncio.run(view.key(SimpleNamespace(key='F11')))
+    assert not view.page.window.full_screen
+    assert view.screen == screen
+    asyncio.run(view.key(SimpleNamespace(key='F11')))
+    assert view.page.window.full_screen
+    assert view.screen == screen
+
+
+def test_f11_does_not_access_native_window_in_web_preview(view):
+    view.screen = 'team'
+    asyncio.run(view.key(SimpleNamespace(key='F11')))
+    assert view.screen == 'team'
+
+
+@pytest.mark.parametrize('blocker', ['handoff', 'menu'])
+def test_f11_preserves_keyboard_block_during_handoff_or_menu(view, blocker):
+    view.page.web = False
+    view.page.window = SimpleNamespace(full_screen=True)
+    view.updater.handoff = blocker == 'handoff'
+    view.shortcuts.menu_open = blocker == 'menu'
+    asyncio.run(view.key(SimpleNamespace(key='F11')))
+    assert view.page.window.full_screen
