@@ -375,3 +375,15 @@ pantalla DSI instalada, especialmente en Equipo. Se autoriza corregirlo en main:
 Linux nativo inicia a pantalla completa; F11 alterna con ventana en el cliente
 nativo, conservando Cerrar y Escape. Sin escalado ni cambios de formularios o modo
 escritorio. Validación física del compositor/DSI pendiente. Spec 045.
+
+## Navegación por swipe (2026-11-22)
+El usuario autoriza implementar navegación táctil y un commit (spec 046).
+La galería permite arrastre horizontal y la barra aparece durante scroll. La flecha
+junto a X en selectores buscables abre un diálogo con búsqueda temporal y lista
+vertical arrastrable; el campo conserva su desplegable nativo para edición directa
+y teclado. Cancelar/Escape no confirma. No se cambian formatos ni generación.
+Este acceso adicional no sustituye el menú nativo 280 × 160 ni cambia el significado
+de X. No se modifica fullscreen ni se instala/parchea Squeekboard. En Pi se observó
+que Flet mínimo abre teclado en ventana, pero no en fullscreen con labwc
+0.20.2-1~bpo13+1 / Squeekboard 1.43.1-1+rpt1, incluso con Visible=true.
+Validación nativa Mac a 800 × 480 y tests en spec 046; dedo físico en Pi pendiente.

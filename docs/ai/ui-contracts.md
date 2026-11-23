@@ -115,3 +115,11 @@ Pantalla completa (spec 045): arranque portátil Linux nativo sin barras del
 escritorio mediante fullscreen. F11 alterna en las vistas nativas, incluida Equipo;
 web conserva el control del navegador. Escape no sale de fullscreen: mantiene su
 función actual. Handoff y menú de accesos conservan su bloqueo de atajos.
+
+Swipe (spec 046): galería arrastrable horizontalmente, barra AUTO. Flecha de los
+selectores buscables abre lista táctil adicional con búsqueda temporal y scroll
+vertical. Arrastrar no elige, tocar opción habilitada confirma una sola vez;
+Cancelar/Escape conserva elección. Campo nativo, consulta al foco y X conservados.
+El diálogo no activa automáticamente el buscador/teclado; no reenvía atajos de
+la vista de fondo mientras está abierto, salvo F11. Al cerrar restaura el handler.
+Validado con cliente Mac a 800 × 480; Pi táctil y teclado virtual pendientes.

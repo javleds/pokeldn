@@ -229,7 +229,16 @@ class TeamView:
         control.menu_style = ft.MenuStyle(bgcolor=PAPER, max_size=ft.Size(280, 160),
                                          min_size=ft.Size(0, 0))
         if search:
-            control.trailing_icon = ft.Row([control.selected_suffix, ft.Icon(ft.Icons.ARROW_DROP_DOWN, size=16)],
+            from gui.portable_touch import TouchOptions
+
+            def open_touch(e):
+                if not control.disabled:
+                    TouchOptions(self.page, control, selected).open()
+
+            touch_button = ft.IconButton(ft.Icons.ARROW_DROP_DOWN,
+                tooltip="Explorar opciones con desplazamiento táctil", on_click=open_touch,
+                icon_size=20, width=28, height=28, padding=0, icon_color=INK)
+            control.trailing_icon = ft.Row([control.selected_suffix, touch_button],
                                           tight=True, spacing=0, height=28)
             control.selected_trailing_icon = control.trailing_icon
         else:

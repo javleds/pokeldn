@@ -634,7 +634,7 @@ class PortableView:
 
     def view_home(self):
         self.header_text.value = "POKÉDEX · JUEGOS"
-        self.footer.value = "← → Explorar · Enter Elegir · ↑ Ajustes"
+        self.footer.value = "Desliza para explorar · ← → / Enter Elegir · ↑ Ajustes"
         tiles = []
         for index, game in enumerate(PORTABLE_GAMES):
             async def focused(e, index=index):
@@ -663,9 +663,19 @@ class PortableView:
             self.buttons.append(tile)
         self.game_list = ft.ListView(tiles, horizontal=True, spacing=12,
                                     build_controls_on_demand=False, padding=4,
-                                    scroll=ft.ScrollMode.ALWAYS, expand=True)
+                                    scroll=ft.ScrollMode.AUTO, expand=True)
+        from gui.portable_touch import drag_scroll
+
+        listing = self.game_list
+
+        async def dragged(delta):
+            async with self.gallery_navigation:
+                if (self.screen == 'home' and self.connected and not self.closing
+                        and self.game_list is listing):
+                    await listing.scroll_to(delta=delta, duration=0)
+
         return ft.Column([self.title("choose_game", "Elige el juego"),
-                          self.game_list], spacing=12, expand=True)
+                          drag_scroll(self.game_list, dragged, horizontal=True)], spacing=12, expand=True)
 
     async def start(self):
         if self.setup.active_team:
