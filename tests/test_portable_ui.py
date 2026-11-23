@@ -284,12 +284,12 @@ def test_start_schedules_focus_only_once_when_checks_open_gallery(view, monkeypa
 
 
 @pytest.mark.parametrize('platform,web,fullscreen,height', [
-    ('linux', False, True, 480),
+    ('linux', False, False, 480),
     ('linux', True, False, 480),
     ('darwin', False, False, 512),
     ('win32', False, False, 480),
 ])
-def test_portable_startup_uses_full_display_only_on_native_linux(
+def test_portable_startup_preserves_platform_window_size(
         monkeypatch, platform, web, fullscreen, height):
     import flet as ft
     from gui import portable
@@ -379,3 +379,43 @@ def test_native_header_reaches_fullscreen_next_to_settings():
     assert ui.buttons[ui.focus_index] is ui.fullscreen_button
     asyncio.run(ui.key(SimpleNamespace(key='Arrow Down')))
     assert ui.focus_index < len(PORTABLE_GAMES)
+
+
+@pytest.mark.parametrize('platform,web,enabled', [
+    ('linux', False, True), ('darwin', False, False), ('linux', True, False),
+])
+def test_borderless_is_default_only_on_native_linux(monkeypatch, platform, web, enabled):
+    import flet as ft
+    from gui import portable
+    monkeypatch.setattr(portable.sys, 'platform', platform)
+    monkeypatch.setenv('POKELDN_PORTABLE_DEMO', '1')
+    monkeypatch.delenv('POKELDN_UPDATE_JOB', raising=False)
+    monkeypatch.setattr(PortableView, 'start', AsyncMock())
+    page = SimpleNamespace(web=web, fonts={}, window=ft.Window(),
+                           add=lambda control: None, run_task=lambda *a: None)
+    asyncio.run(portable.main(page))
+    assert page.window.frameless is enabled
+    assert page.window.maximized is enabled
+    assert not page.window.full_screen
+    if enabled:
+        assert page.window.min_height == 0
+
+
+def test_borderless_resize_preserves_controls_and_fullscreen_returns_to_maximized(monkeypatch):
+    import flet as ft
+    from gui import portable
+    monkeypatch.setattr(portable.sys, 'platform', 'linux')
+    page = SimpleNamespace(web=False, window=ft.Window(), update=lambda: None,
+                           run_task=lambda *a: None)
+    ui = PortableView(page, Setup(demo=True))
+    content = ui.body.content
+    monkeypatch.setattr(ui.canvas, 'update', lambda: None)
+    for available, expected in [(480, 480), (450, 480), (230, 480), (720, 720), (480, 480)]:
+        ui.resize_canvas(SimpleNamespace(height=available))
+        assert ui.canvas.height == expected
+        assert ui.body.content is content
+    assert ui.viewport.scroll == ft.ScrollMode.AUTO
+    ui.toggle_fullscreen()
+    assert page.window.full_screen
+    ui.toggle_fullscreen()
+    assert not page.window.full_screen and page.window.maximized

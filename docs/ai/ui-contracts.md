@@ -144,3 +144,14 @@ Actualizador fullscreen (spec 049): botón de 40 px al extremo derecho del títu
 sin fila adicional; F11 comparte acción. Linux nativo inicia fullscreen; web oculta
 botón. Alternar preserva progreso/logs y no cambia el bloqueo de Cerrar durante
 instalación. Verificados entrada/salida por botón y detalles a 800 × 480 en Mac.
+
+Prueba sin bordes (spec 050): sólo con POKELDN_PORTABLE_BORDERLESS=1 en Linux
+nativo. Canvas mínimo 480 dentro de viewport con scroll/swipe cuando el área útil
+es menor, conservando tamaños y referencias de controles. A 800 × 480 mantiene
+Básico completo. Al volver de fullscreen por botón/F11, maximizar la ventana sin
+bordes. No asumir que la prueba Mac certifica teclado/compositor de Pi.
+
+Default sin bordes (spec 051, sustituye opt-in de 050 y arranque de 045): Linux
+nativo abre maximizado sin bordes sin variable adicional. Mismo viewport adaptable;
+botón/F11 entra en fullscreen y regresa a maximizado. El dock reserva espacio.
+No se persiste estado. Actualizador conserva spec 049; otras plataformas intactas.

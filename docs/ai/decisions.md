@@ -409,3 +409,22 @@ botón en cabecera y F11 alternan durante progreso o resultado, sin interrumpir
 el worker ni habilitar cierre prematuro. Icono/tooltip siguen eventos nativos.
 No se persiste preferencia. El helper instalado debe incluir el cambio para verlo;
 la actualización que lo instala todavía usa el helper anterior.
+
+## Prueba opt-in de ventana sin bordes (2026-11-23)
+Usuario confirmó en Pi/labwc que una prueba Flet maximizada sin bordes muestra
+Squeekboard y ambos campos permanecen visibles, aunque el dock reserva altura.
+Autoriza probarlo en app si el contenido se adapta. Spec 050 añade
+POKELDN_PORTABLE_BORDERLESS=1 sólo para Linux nativo: maximizada sin bordes,
+con botón/F11 conservados. El default sigue siendo fullscreen hasta validar Pi.
+Canvas de al menos 480 px dentro de viewport desplazable cuando falta altura;
+no encoger botones ni reconstruir formularios al cambiar tamaño. La adaptación
+es mediante scroll de respaldo, no redistribución de campos. No cambiar dock
+ni el helper de actualización. Validación real de Squeekboard en la app pendiente.
+
+## Ventana sin bordes predeterminada (2026-11-23)
+El usuario pide que el modo de spec 050 sea el default. Spec 051 sustituye su
+opt-in: Linux portátil nativo arranca maximizado sin bordes, sin variable de
+entorno. Se conserva viewport adaptable, botón/F11 y regreso a maximizado.
+Este acuerdo sustituye el arranque fullscreen de 045 sólo para app principal;
+actualizador conserva 049. Mac/Windows/web no cambian. La petición autoriza
+adoptarlo, pero la validación de Squeekboard en formularios reales sigue pendiente.

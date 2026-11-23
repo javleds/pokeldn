@@ -403,3 +403,23 @@ La previsualización web usa el control de pantalla completa del navegador.
 Validar en Pi con escalado adecuado: Equipo/Básico completo, campos buscables,
 menús y modales, y cierre accesible. El comportamiento del compositor Linux y la
 superficie útil DSI aún requieren comprobación física (spec 045).
+
+### Ventana sin bordes y teclado en Linux
+
+Desde spec 051, la app portátil Linux nativa arranca maximizada sin bordes con
+el comando habitual, ejecutado en la terminal del escritorio de la Raspberry:
+
+```sh
+./scripts/run_portable.sh
+```
+
+Respeta el espacio reservado por la barra del escritorio. El botón de cabecera y
+F11 alternan entre fullscreen y maximizada sin bordes. Si falta altura, deslizar
+verticalmente permite acceder al contenido; los controles conservan su tamaño.
+No requiere variables adicionales ni persiste la alternancia entre ejecuciones.
+El actualizador conserva su arranque fullscreen independiente (spec 049).
+
+Comprobar en Pi Apodo/Nivel, búsqueda de especie/movimientos, conexión y entrenador
+con Squeekboard: campo y acciones accesibles, selección y texto conservados al
+ocultar teclado y alternar fullscreen. La validación física de estos formularios
+sigue pendiente; el modo fue adoptado por petición del usuario.

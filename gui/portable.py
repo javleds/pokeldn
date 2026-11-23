@@ -115,8 +115,29 @@ class PortableView:
             ft.Container(self.footer, height=24, alignment=ft.Alignment.CENTER),
         ], spacing=6, expand=True))
         self.resources = ResourceOverlay(page)
+        self.borderless_mode = not page.web and sys.platform == "linux"
+        self.canvas = self.control
+        if self.borderless_mode:
+            from gui.portable_touch import drag_scroll
+            self.canvas.expand = False
+            self.canvas.height = 480
+            self.viewport = ft.Column([self.canvas], expand=True, spacing=0,
+                                      scroll=ft.ScrollMode.AUTO)
+
+            async def scroll(delta):
+                if self.connected and not self.closing:
+                    await self.viewport.scroll_to(delta=delta, duration=0)
+
+            self.control = ft.Container(drag_scroll(self.viewport, scroll), expand=True,
+                                        on_size_change=self.resize_canvas)
         self.control = ft.Stack([self.control, self.resources.control], expand=True)
         self.render(update=False)
+
+    def resize_canvas(self, event):
+        height = max(480, event.height)
+        if self.canvas.height != height:
+            self.canvas.height = height
+            self.canvas.update()
 
     def sync_header_navigation(self):
         controls = [self.shortcuts.button, self.updater.button, self.fullscreen_button,
@@ -143,6 +164,8 @@ class PortableView:
         if self.page.web or self.closing or self.updater.handoff or self.shortcuts.menu_open:
             return
         self.page.window.full_screen = not self.page.window.full_screen
+        if self.borderless_mode and not self.page.window.full_screen:
+            self.page.window.maximized = True
         self.sync_fullscreen_button()
         self.page.update()
 
@@ -737,8 +760,11 @@ async def main(page: ft.Page):
     page.window.min_width, page.window.min_height = 640, 400
     page.window.prevent_close = True
     if not page.web and sys.platform == "linux":
-        # Reserve the full display for the portable canvas, without desktop chrome.
-        page.window.full_screen = True
+        # Keep the system keyboard above the app; the compositor reserves its space.
+        page.window.full_screen = False
+        page.window.frameless = True
+        page.window.maximized = True
+        page.window.min_height = 0
     # The macOS title bar consumes 32 logical pixels inside Flet's reported
     # window height. Reserve it in addition to the portable 480-pixel canvas.
     if not page.web and sys.platform == 'darwin':
