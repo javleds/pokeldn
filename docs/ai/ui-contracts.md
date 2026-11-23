@@ -123,3 +123,8 @@ Cancelar/Escape conserva elección. Campo nativo, consulta al foco y X conservad
 El diálogo no activa automáticamente el buscador/teclado; no reenvía atajos de
 la vista de fondo mientras está abierto, salvo F11. Al cerrar restaura el handler.
 Validado con cliente Mac a 800 × 480; Pi táctil y teclado virtual pendientes.
+
+Pantalla completa táctil (spec 047): botón a izquierda de Ajustes; permanece visible
+en cliente nativo incluso fuera de la galería. F11 y toque comparten acción; icono
+y tooltip reflejan estado. ↑ sigue enfocando Ajustes, ← llega a fullscreen y ↓
+vuelve a juegos. Sin filas nuevas ni cambios de datos al alternar.

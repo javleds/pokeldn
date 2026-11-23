@@ -333,3 +333,49 @@ def test_f11_preserves_keyboard_block_during_handoff_or_menu(view, blocker):
     view.shortcuts.menu_open = blocker == 'menu'
     asyncio.run(view.key(SimpleNamespace(key='F11')))
     assert view.page.window.full_screen
+
+
+def test_fullscreen_button_toggles_and_tracks_f11(view):
+    import flet as ft
+    view.page.web = False
+    view.page.window = SimpleNamespace(full_screen=False)
+    view.fullscreen_button.on_click(None)
+    assert view.page.window.full_screen
+    assert view.fullscreen_button.icon == ft.Icons.FULLSCREEN_EXIT
+    assert view.fullscreen_button.tooltip == 'Volver a ventana (F11)'
+    asyncio.run(view.key(SimpleNamespace(key='F11')))
+    assert not view.page.window.full_screen
+    assert view.fullscreen_button.icon == ft.Icons.FULLSCREEN
+
+
+@pytest.mark.parametrize('blocker', ['web', 'closing', 'handoff', 'menu'])
+def test_fullscreen_button_respects_window_guards(view, blocker):
+    view.page.web = blocker == 'web'
+    view.page.window = SimpleNamespace(full_screen=False)
+    view.closing = blocker == 'closing'
+    view.updater.handoff = blocker == 'handoff'
+    view.shortcuts.menu_open = blocker == 'menu'
+    view.fullscreen_button.on_click(None)
+    assert not view.page.window.full_screen
+
+
+def test_fullscreen_button_is_hidden_on_web(view):
+    assert not view.fullscreen_button.visible
+    assert view.fullscreen_button not in view.buttons
+
+
+def test_native_header_reaches_fullscreen_next_to_settings():
+    from gui.portable import PORTABLE_GAMES
+    page = SimpleNamespace(web=False, window=SimpleNamespace(full_screen=True),
+                           update=lambda: None, run_task=lambda *a: None)
+    ui = PortableView(page, Setup(demo=True))
+    ui.go('home')
+    assert ui.fullscreen_button.visible
+    assert ui.buttons.index(ui.fullscreen_button) + 1 == ui.buttons.index(ui.settings_button)
+    ui.focus = AsyncMock()
+    asyncio.run(ui.key(SimpleNamespace(key='Arrow Up')))
+    assert ui.buttons[ui.focus_index] is ui.settings_button
+    asyncio.run(ui.key(SimpleNamespace(key='Arrow Left')))
+    assert ui.buttons[ui.focus_index] is ui.fullscreen_button
+    asyncio.run(ui.key(SimpleNamespace(key='Arrow Down')))
+    assert ui.focus_index < len(PORTABLE_GAMES)

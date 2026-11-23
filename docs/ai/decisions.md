@@ -387,3 +387,9 @@ de X. No se modifica fullscreen ni se instala/parchea Squeekboard. En Pi se obse
 que Flet mínimo abre teclado en ventana, pero no en fullscreen con labwc
 0.20.2-1~bpo13+1 / Squeekboard 1.43.1-1+rpt1, incluso con Visible=true.
 Validación nativa Mac a 800 × 480 y tests en spec 046; dedo físico en Pi pendiente.
+
+## Alternancia táctil de pantalla completa (2026-11-22)
+Botón nativo inmediatamente a izquierda de Ajustes, sin nueva fila, disponible en
+las vistas portátiles incluso cuando Ajustes esté oculto. Comparte acción con F11,
+icono/tooltip de entrar/salir y navegación de cabecera. Web lo oculta. Se conserva
+el arranque Linux en fullscreen; no se persiste preferencia. Spec 047.

@@ -12,7 +12,7 @@ from gui.portable_setup import Setup
 
 def view():
     page = SimpleNamespace(web=False, update=Mock(), run_task=Mock(return_value=None),
-                           window=SimpleNamespace(destroy=AsyncMock()))
+                           window=SimpleNamespace(destroy=AsyncMock(), full_screen=False))
     return portable.PortableView(page, Setup(demo=True))
 
 

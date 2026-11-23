@@ -86,6 +86,13 @@ class PortableView:
             on_focus=lambda e: self.header_focus(self.settings_button),
             style=ft.ButtonStyle(side={ft.ControlState.FOCUSED: ft.BorderSide(2, CYAN)},
                                  shape=ft.RoundedRectangleBorder(radius=10)))
+        self.fullscreen_button = ft.IconButton(
+            icon=ft.Icons.FULLSCREEN, tooltip="Pantalla completa (F11)",
+            icon_color="white", icon_size=24, visible=not page.web,
+            on_click=self.toggle_fullscreen,
+            on_focus=lambda e: self.header_focus(self.fullscreen_button),
+            style=ft.ButtonStyle(side={ft.ControlState.FOCUSED: ft.BorderSide(2, CYAN)},
+                                 shape=ft.RoundedRectangleBorder(radius=10)))
         self.updater = PortableUpdate(self)
         self.shortcuts = ShortcutMenu(self)
         self.close_button = ft.IconButton(
@@ -101,7 +108,8 @@ class PortableView:
         self.control = ft.Container(bgcolor=RED, padding=8, expand=True, content=ft.Column([
             ft.Container(ft.Row([lens, lamps, ft.Container(self.header_text, expand=True, padding=ft.Padding.only(left=14)),
                                  ft.Container(self.step, bgcolor=PAPER, border_radius=16, padding=ft.Padding(12, 4, 12, 4)),
-                                 self.shortcuts.control, self.updater.button, self.settings_button, self.close_button]),
+                                 self.shortcuts.control, self.updater.button, self.fullscreen_button,
+                                 self.settings_button, self.close_button]),
                          height=40, padding=ft.Padding(10, 0, 10, 0)),
             self.body,
             ft.Container(self.footer, height=24, alignment=ft.Alignment.CENTER),
@@ -111,7 +119,8 @@ class PortableView:
         self.render(update=False)
 
     def sync_header_navigation(self):
-        controls = [self.shortcuts.button, self.updater.button, self.settings_button, self.close_button]
+        controls = [self.shortcuts.button, self.updater.button, self.fullscreen_button,
+                    self.settings_button, self.close_button]
         focused = self.buttons[self.focus_index] if self.focus_index < len(self.buttons) else None
         self.buttons = [button for button in self.buttons if button not in controls]
         if self.shortcuts.control.visible:
@@ -123,6 +132,19 @@ class PortableView:
     def header_focus(self, control):
         if control in self.buttons:
             self.focus_index = self.buttons.index(control)
+
+    def sync_fullscreen_button(self):
+        fullscreen = not self.page.web and self.page.window.full_screen
+        self.fullscreen_button.icon = ft.Icons.FULLSCREEN_EXIT if fullscreen else ft.Icons.FULLSCREEN
+        self.fullscreen_button.tooltip = ("Volver a ventana (F11)" if fullscreen
+                                          else "Pantalla completa (F11)")
+
+    def toggle_fullscreen(self, e=None):
+        if self.page.web or self.closing or self.updater.handoff or self.shortcuts.menu_open:
+            return
+        self.page.window.full_screen = not self.page.window.full_screen
+        self.sync_fullscreen_button()
+        self.page.update()
 
     async def close(self, e):
         if self.closing or self.setup.session_busy or (self.updater.handoff and e is not None):
@@ -234,8 +256,7 @@ class PortableView:
         if self.updater.handoff or self.shortcuts.menu_open:
             return
         if e.key == "F11" and not self.page.web:
-            self.page.window.full_screen = not self.page.window.full_screen
-            self.page.update()
+            self.toggle_fullscreen()
             return
         if e.key == "?":
             self.resources.toggle()
@@ -326,6 +347,7 @@ class PortableView:
         self.settings_button.visible = self.screen in ("home", "ready", "team") and not s.busy
         self.close_button.disabled = s.busy or s.session_busy
         self.settings_button.disabled = s.session_busy
+        self.sync_fullscreen_button()
         self.updater.sync()
         self.shortcuts.sync()
         self.sync_header_navigation()
@@ -341,6 +363,7 @@ class PortableView:
                 self.shortcuts.control.update()
                 self.updater.button.update()
                 self.settings_button.update()
+                self.fullscreen_button.update()
                 self.close_button.update()
 
     def layout(self, heading, content, actions):
@@ -728,6 +751,10 @@ async def main(page: ft.Page):
     async def window_event(e):
         if e.type == ft.WindowEventType.CLOSE:
             await view.close(e)
+        elif e.type in (ft.WindowEventType.ENTER_FULL_SCREEN, ft.WindowEventType.LEAVE_FULL_SCREEN):
+            page.window.full_screen = e.type == ft.WindowEventType.ENTER_FULL_SCREEN
+            view.sync_fullscreen_button()
+            view.fullscreen_button.update()
     page.window.on_event = window_event
     # Notifications can originate from another web session: dispatch on this page.
     def changed():

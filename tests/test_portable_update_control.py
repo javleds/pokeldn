@@ -164,6 +164,10 @@ def test_gallery_up_keeps_settings_and_left_reaches_update():
     asyncio.run(ui.key(SimpleNamespace(key='Arrow Up')))
     assert ui.buttons[ui.focus_index] is ui.settings_button
     asyncio.run(ui.key(SimpleNamespace(key='Arrow Left')))
+    assert ui.buttons[ui.focus_index] is ui.fullscreen_button
+    asyncio.run(ui.key(SimpleNamespace(key='Arrow Left')))
     assert ui.buttons[ui.focus_index] is ui.updater.button
+    asyncio.run(ui.key(SimpleNamespace(key='Arrow Right')))
+    assert ui.buttons[ui.focus_index] is ui.fullscreen_button
     asyncio.run(ui.key(SimpleNamespace(key='Arrow Right')))
     assert ui.buttons[ui.focus_index] is ui.settings_button
