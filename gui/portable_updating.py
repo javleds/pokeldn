@@ -55,11 +55,19 @@ class UpdateWindow:
         self.details = ft.ListView(expand=True, spacing=3, auto_scroll=True, visible=False)
         self.toggle = ft.TextButton("Mostrar detalles", on_click=self.toggle_details)
         self.close_button = ft.TextButton("Cerrar", disabled=True, on_click=self.close)
+        self.fullscreen_button = ft.IconButton(
+            icon=ft.Icons.FULLSCREEN, icon_color="white", width=40, height=40,
+            visible=not page.web, on_click=self.toggle_fullscreen)
+        self.sync_fullscreen_button()
         self.log_path = ft.Text(f"Logs: update.log · app.log · helper.log\nCarpeta: {job}",
                                 size=12, color=INK, selectable=True, max_lines=3)
         self.spacer = ft.Container(expand=True)
         self.control = ft.Container(bgcolor=RED, padding=16, expand=True, content=ft.Column([
-            ft.Text("POKÉDEX · ACTUALIZACIÓN", size=21, color="white", weight=ft.FontWeight.W_700),
+            ft.Row([
+                ft.Text("POKÉDEX · ACTUALIZACIÓN", size=21, color="white",
+                        weight=ft.FontWeight.W_700, expand=True),
+                self.fullscreen_button,
+            ]),
             ft.Container(bgcolor=PAPER, border_radius=16, padding=20, expand=True,
                          content=ft.Column([
                              ft.Row([self.spinner, ft.Container(self.stage, expand=True)], spacing=14),
@@ -147,9 +155,30 @@ class UpdateWindow:
         if self.finished:
             await self.page.window.destroy()
 
+    def sync_fullscreen_button(self):
+        fullscreen = not self.page.web and self.page.window.full_screen
+        self.fullscreen_button.icon = ft.Icons.FULLSCREEN_EXIT if fullscreen else ft.Icons.FULLSCREEN
+        self.fullscreen_button.tooltip = ("Volver a ventana (F11)" if fullscreen
+                                          else "Pantalla completa (F11)")
+
+    def toggle_fullscreen(self, event=None):
+        if self.page.web:
+            return
+        self.page.window.full_screen = not self.page.window.full_screen
+        self.sync_fullscreen_button()
+        self.update()
+
+    def key(self, event):
+        if event.key == "F11":
+            self.toggle_fullscreen()
+
     async def window_event(self, event):
         if event.type == ft.WindowEventType.CLOSE:
             await self.close(event)
+        elif event.type in (ft.WindowEventType.ENTER_FULL_SCREEN, ft.WindowEventType.LEAVE_FULL_SCREEN):
+            self.page.window.full_screen = event.type == ft.WindowEventType.ENTER_FULL_SCREEN
+            self.sync_fullscreen_button()
+            self.update()
 
     async def run(self):
         from pokeldn.app import portable_update
@@ -207,6 +236,8 @@ def configure(page):
     page.window.width, page.window.height = 800, 512 if sys.platform == "darwin" else 480
     page.window.min_width, page.window.min_height = page.window.width, page.window.height
     page.window.prevent_close = True
+    if not page.web and sys.platform == "linux":
+        page.window.full_screen = True
 
 
 def run(job: Path):
@@ -219,6 +250,7 @@ def run(job: Path):
     async def main(page):
         configure(page)
         view = UpdateWindow(page, job)
+        page.on_keyboard_event = view.key
         page.window.on_event = view.window_event
         page.on_disconnect = view.disconnect
         page.on_connect = view.reconnect

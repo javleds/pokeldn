@@ -5,13 +5,14 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 import flet as ft
+import pytest
 
 from gui import portable_updating
 
 
 def window(tmp_path):
-    page = SimpleNamespace(add=Mock(), update=Mock(), fonts={},
-                           window=SimpleNamespace(destroy=AsyncMock()))
+    page = SimpleNamespace(add=Mock(), update=Mock(), fonts={}, web=False,
+                           window=SimpleNamespace(destroy=AsyncMock(), full_screen=False))
     return portable_updating.UpdateWindow(page, tmp_path)
 
 
@@ -147,3 +148,55 @@ def test_reconnect_restores_updates_after_disconnect(tmp_path):
     asyncio.run(ui.reconnect(None))
     ui.page.update.assert_called_once()
     assert ui.connected
+
+
+@pytest.mark.parametrize("platform,web,expected", [
+    ("linux", False, True), ("darwin", False, False),
+    ("win32", False, False), ("linux", True, False),
+])
+def test_fullscreen_startup_is_only_native_linux(tmp_path, monkeypatch, platform, web, expected):
+    ui = window(tmp_path)
+    ui.page.web = web
+    monkeypatch.setattr(portable_updating.sys, "platform", platform)
+    portable_updating.configure(ui.page)
+    assert ui.page.window.full_screen is expected
+    assert ui.page.window.prevent_close
+
+
+def test_fullscreen_button_and_f11_preserve_progress_and_close_guard(tmp_path):
+    ui = window(tmp_path)
+    ui.progress("Compilando", "Motor Pokémon")
+    ui.flush()
+    ui.fullscreen_button.on_click(None)
+    assert ui.page.window.full_screen
+    assert ui.fullscreen_button.icon == ft.Icons.FULLSCREEN_EXIT
+    assert ui.fullscreen_button.tooltip == "Volver a ventana (F11)"
+    ui.key(SimpleNamespace(key="F11"))
+    assert not ui.page.window.full_screen
+    assert ui.fullscreen_button.icon == ft.Icons.FULLSCREEN
+    assert ui.stage.value == "Compilando"
+    assert list(ui.lines) == ["Compilando: Motor Pokémon"]
+    assert ui.close_button.disabled and not ui.finished
+    ui.key(SimpleNamespace(key="Escape"))
+    asyncio.run(ui.window_event(SimpleNamespace(type=ft.WindowEventType.CLOSE)))
+    ui.page.window.destroy.assert_not_awaited()
+
+
+def test_external_fullscreen_events_sync_button_after_failure(tmp_path):
+    ui = window(tmp_path)
+    ui.finished = True
+    for event_type, expected in [(ft.WindowEventType.ENTER_FULL_SCREEN, True),
+                                 (ft.WindowEventType.LEAVE_FULL_SCREEN, False)]:
+        asyncio.run(ui.window_event(SimpleNamespace(type=event_type)))
+        assert ui.page.window.full_screen is expected
+        assert ui.fullscreen_button.icon == (ft.Icons.FULLSCREEN_EXIT if expected else ft.Icons.FULLSCREEN)
+    assert ui.finished
+
+
+def test_web_hides_fullscreen_and_does_not_access_native_window(tmp_path):
+    page = SimpleNamespace(web=True, update=Mock())
+    ui = portable_updating.UpdateWindow(page, tmp_path)
+    assert not ui.fullscreen_button.visible
+    ui.key(SimpleNamespace(key="F11"))
+    ui.toggle_fullscreen()
+    page.update.assert_not_called()

@@ -402,3 +402,10 @@ y conserva Base/Automático/sin selección. La consulta vive únicamente en el d
 se inicia vacía y no altera la selección confirmada al cancelar o refrescar.
 El foco no abre automáticamente el diálogo. Selectores no buscables y escritorio
 conservan sus controles. Pruebas y límites de validación en spec 048.
+
+## Pantalla completa del actualizador (2026-11-23)
+Spec 049 extiende 045/047 al helper independiente: Linux nativo inicia fullscreen;
+botón en cabecera y F11 alternan durante progreso o resultado, sin interrumpir
+el worker ni habilitar cierre prematuro. Icono/tooltip siguen eventos nativos.
+No se persiste preferencia. El helper instalado debe incluir el cambio para verlo;
+la actualización que lo instala todavía usa el helper anterior.

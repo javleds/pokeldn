@@ -139,3 +139,8 @@ Selectores dedicados (spec 048): toda la superficie nombre/flecha abre la misma
 lista táctil; no queda Dropdown nativo debajo. X independiente; campo de 40 px,
 selección visible y borde de foco. Búsqueda únicamente dentro del diálogo.
 Evidencia visual y límites de teclado/Pi registrados en spec 048.
+
+Actualizador fullscreen (spec 049): botón de 40 px al extremo derecho del título,
+sin fila adicional; F11 comparte acción. Linux nativo inicia fullscreen; web oculta
+botón. Alternar preserva progreso/logs y no cambia el bloqueo de Cerrar durante
+instalación. Verificados entrada/salida por botón y detalles a 800 × 480 en Mac.
