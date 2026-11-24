@@ -86,6 +86,14 @@ class PortableView:
             on_focus=lambda e: self.header_focus(self.settings_button),
             style=ft.ButtonStyle(side={ft.ControlState.FOCUSED: ft.BorderSide(2, CYAN)},
                                  shape=ft.RoundedRectangleBorder(radius=10)))
+        self.resources_button = ft.IconButton(
+            icon=ft.Icons.MONITOR_HEART_OUTLINED,
+            tooltip="Mostrar estadísticas CPU/RAM/temperatura (?)",
+            icon_color="white", icon_size=24,
+            on_click=self.toggle_resources,
+            on_focus=lambda e: self.header_focus(self.resources_button),
+            style=ft.ButtonStyle(side={ft.ControlState.FOCUSED: ft.BorderSide(2, CYAN)},
+                                 shape=ft.RoundedRectangleBorder(radius=10)))
         self.fullscreen_button = ft.IconButton(
             icon=ft.Icons.FULLSCREEN, tooltip="Pantalla completa (F11)",
             icon_color="white", icon_size=24, visible=not page.web,
@@ -109,7 +117,7 @@ class PortableView:
             ft.Container(ft.Row([lens, lamps, ft.Container(self.header_text, expand=True, padding=ft.Padding.only(left=14)),
                                  ft.Container(self.step, bgcolor=PAPER, border_radius=16, padding=ft.Padding(12, 4, 12, 4)),
                                  self.shortcuts.control, self.updater.button, self.fullscreen_button,
-                                 self.settings_button, self.close_button]),
+                                 self.settings_button, self.resources_button, self.close_button]),
                          height=40, padding=ft.Padding(10, 0, 10, 0)),
             self.body,
             ft.Container(self.footer, height=24, alignment=ft.Alignment.CENTER),
@@ -141,7 +149,7 @@ class PortableView:
 
     def sync_header_navigation(self):
         controls = [self.shortcuts.button, self.updater.button, self.fullscreen_button,
-                    self.settings_button, self.close_button]
+                    self.settings_button, self.resources_button, self.close_button]
         focused = self.buttons[self.focus_index] if self.focus_index < len(self.buttons) else None
         self.buttons = [button for button in self.buttons if button not in controls]
         if self.shortcuts.control.visible:
@@ -153,6 +161,15 @@ class PortableView:
     def header_focus(self, control):
         if control in self.buttons:
             self.focus_index = self.buttons.index(control)
+
+    def toggle_resources(self, e=None):
+        if self.closing or not self.connected or self.updater.handoff or self.shortcuts.menu_open:
+            return
+        self.resources.toggle()
+        self.resources_button.icon_color = CYAN if self.resources.enabled else "white"
+        action = "Ocultar" if self.resources.enabled else "Mostrar"
+        self.resources_button.tooltip = f"{action} estadísticas CPU/RAM/temperatura (?)"
+        self.resources_button.update()
 
     def sync_fullscreen_button(self):
         fullscreen = not self.page.web and self.page.window.full_screen
@@ -282,7 +299,7 @@ class PortableView:
             self.toggle_fullscreen()
             return
         if e.key == "?":
-            self.resources.toggle()
+            self.toggle_resources()
             return
         if self.screen in ('team', 'trainers', 'bank'):
             # Native input/dropdown navigation owns arrows; Escape must not dismiss

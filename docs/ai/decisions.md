@@ -428,3 +428,10 @@ entorno. Se conserva viewport adaptable, botón/F11 y regreso a maximizado.
 Este acuerdo sustituye el arranque fullscreen de 045 sólo para app principal;
 actualizador conserva 049. Mac/Windows/web no cambian. La petición autoriza
 adoptarlo, pero la validación de Squeekboard en formularios reales sigue pendiente.
+
+## Botón de estadísticas (2026-11-23)
+
+Se añade un botón a la derecha de Ajustes para alternar CPU/RAM/temperatura
+(spec 052), compartiendo estado con `?`. Cian indica monitor visible; tooltip
+Mostrar/Ocultar. Disponible también en diagnóstico y durante sesiones; no cambia
+el bloqueo de Ajustes. Conserva estado entre vistas, sin persistencia al reiniciar.

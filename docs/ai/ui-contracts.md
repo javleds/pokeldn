@@ -155,3 +155,7 @@ Default sin bordes (spec 051, sustituye opt-in de 050 y arranque de 045): Linux
 nativo abre maximizado sin bordes sin variable adicional. Mismo viewport adaptable;
 botón/F11 entra en fullscreen y regresa a maximizado. El dock reserva espacio.
 No se persiste estado. Actualizador conserva spec 049; otras plataformas intactas.
+
+Estadísticas (spec 052): botón a derecha de Ajustes, sin nueva fila; clic y `?`
+comparten estado e indicador cian. ↑ sigue llegando a Ajustes, → al monitor.
+Disponible durante sesiones; muestreo sólo mientras visible y conectado.

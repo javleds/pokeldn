@@ -419,3 +419,45 @@ def test_borderless_resize_preserves_controls_and_fullscreen_returns_to_maximize
     assert page.window.full_screen
     ui.toggle_fullscreen()
     assert not page.window.full_screen and page.window.maximized
+
+
+def test_resource_button_and_shortcut_share_state_across_navigation(view, monkeypatch):
+    from unittest.mock import Mock
+    from gui.portable import CYAN
+
+    monkeypatch.setattr(view.resources.control, 'update', Mock())
+    monkeypatch.setattr(view.resources_button, 'update', Mock())
+    view.page.run_task = Mock()
+    assert not view.resources.enabled
+    view.resources_button.on_click(None)
+    assert view.resources.control.visible
+    assert view.resources_button.icon_color == CYAN
+    assert view.resources_button.tooltip.startswith('Ocultar')
+    task = view.resources.task
+    view.go('home')
+    assert view.resources.enabled
+    asyncio.run(view.key(SimpleNamespace(key='?')))
+    assert not view.resources.control.visible
+    assert view.resources_button.icon_color == 'white'
+    assert view.resources_button.tooltip.startswith('Mostrar')
+    task.cancel.assert_called_once()
+    assert view.resources.task is None
+
+
+def test_resource_button_is_next_to_settings_and_keyboard_reachable(view):
+    view.go('home')
+    assert view.buttons.index(view.resources_button) == view.buttons.index(view.settings_button) + 1
+    view.focus = AsyncMock()
+    asyncio.run(view.key(SimpleNamespace(key='Arrow Up')))
+    asyncio.run(view.key(SimpleNamespace(key='Arrow Right')))
+    assert view.buttons[view.focus_index] is view.resources_button
+
+
+@pytest.mark.parametrize('screen', ['health', 'home', 'progress', 'logs'])
+def test_resource_button_remains_available_during_activity(view, screen):
+    view.setup.busy = view.setup.session_busy = True
+    view.screen = screen
+    view.render(update=False)
+    assert view.resources_button.visible
+    assert not view.resources_button.disabled
+    assert view.resources_button in view.buttons
